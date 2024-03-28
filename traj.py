@@ -222,6 +222,8 @@ def main():
 
     except IndexError:
         raise IndexError("Usage: python traj.py [data.json]")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"{sys.argv[1]} not found")
 
     if mode == "animation":
         config = {
