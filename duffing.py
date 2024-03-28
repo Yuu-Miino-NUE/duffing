@@ -11,6 +11,21 @@ class Parameter:
         self.B = B
         self.B0 = B0
 
+    def __repr__(self) -> str:
+        return f"(k, B0, B) = ({self.k:+.6f}, {self.B0:+.6f}, {self.B:+.6f})"
+
+    def increment(self, key: str, step: float = 0.01) -> None:
+        """Increment the parameter value.
+
+        Parameters
+        ----------
+        key : str
+            Key of the parameter to increment.
+        step : float, optional
+            Increment step, by default 0.01.
+        """
+        setattr(self, key, getattr(self, key) + step)
+
 
 def ode_func(t: float, vec_x: np.ndarray, param: Parameter) -> np.ndarray:
     """Duffing oscillator ODE function.
@@ -163,7 +178,9 @@ def poincare_map(
         ).flatten()
         x0 = np.hstack([vec_x, np.eye(2).flatten(), np.zeros(2)])
         jac = np.eye(2)
-        jac_p = np.zeros(2)
+
+        if pjac_key is not None:
+            jac_p = np.zeros(2)
 
     # Calculate the Poincare map
     for _ in range(itr_cnt):
@@ -172,13 +189,16 @@ def poincare_map(
         x0[:2] = sol.y[:2, -1]
         if calc_jac:
             jack = sol.y[2:6, -1].reshape(2, 2, order="F")
-            jac_p = jack @ jac_p + sol.y[6:8, -1]
-            jac = jack @ jac
+
+            if pjac_key is not None:
+                jac_p = jack @ jac_p + sol.y[6:8, -1]
+                jac = jack @ jac
 
     # Return the result
     ret = {"x": np.array(x0[:2])}
     if calc_jac:
         ret["jac"] = jac
+
         if pjac_key is not None:
             ret[f"jac_p({pjac_key})"] = jac_p
 
