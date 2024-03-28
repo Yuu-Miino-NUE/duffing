@@ -192,7 +192,8 @@ def poincare_map(
 
             if pjac_key is not None:
                 jac_p = jack @ jac_p + sol.y[6:8, -1]
-                jac = jack @ jac
+
+            jac = jack @ jac
 
     # Return the result
     ret = {"x": np.array(x0[:2])}
