@@ -4,5 +4,17 @@
         "B": 0.3,
         "B0": 0.08
     },
-    "traj_mode": "animation"
+    "traj_mode": "animation",
+    "traj_animation": {
+        "ax_config":{
+            "xlim": [-1.5, 1.5],
+            "ylim": [-1.5, 1.5]
+        },
+        "traj_plot_config": {
+            "color": "teal"
+        },
+        "point_plot_config": {
+            "color": "orange"
+        }
+    }
 }

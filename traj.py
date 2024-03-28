@@ -19,21 +19,10 @@ def traj_animation(
     param: Parameter,
     inc_param_keys: str | tuple[str, str],
     inc_param_step: float = 0.01,
-    itr_max=1000,
     traj_resolution=100,
-    traj_plot_config: dict[str, Any] = {
-        "color": "gray",
-        "alpha": 0.5,
-        "linewidth": 0.75,
-    },
-    point_plot_config: dict[str, Any] = {
-        "marker": "o",
-        "color": "r",
-        "markersize": 4,
-    },
-    init_point_plot_config: dict[str, Any] = {
-        "color": "g",
-    },
+    traj_plot_config: dict[str, Any] = {},
+    point_plot_config: dict[str, Any] = {},
+    init_point_plot_config: dict[str, Any] = {},
 ) -> None:
     """Animate trajectory of Duffing oscillator.
 
@@ -51,8 +40,6 @@ def traj_animation(
         Key(s) of the parameter to increment.
     inc_param_step : float, optional
         Increment step of the parameter, by default 0.01.
-    itr_max : int, optional
-        Maximum number of iterations, by default 1000.
     traj_resolution : int, optional
         Resolution of the trajectory, by default 50, meaning 50 points per period.
     traj_plot_config : dict[str, Any], optional
@@ -68,12 +55,31 @@ def traj_animation(
     t_span = (0, base_period)
     t_eval = np.linspace(*t_span, traj_resolution)
     is_paused = False
+    plot_traj = True
     if isinstance(inc_param_keys, str):
         _pk = (inc_param_keys, inc_param_keys)
     else:
         _pk = inc_param_keys
+    _param_step = inc_param_step
 
-    init_point_plot_config = point_plot_config | init_point_plot_config
+    traj_plot_config = {
+        "color": "gray",
+        "alpha": 0.5,
+        "linewidth": 0.75,
+    } | traj_plot_config
+    point_plot_config = {
+        "marker": "o",
+        "color": "r",
+        "markersize": 4,
+    } | point_plot_config
+    init_point_plot_config = (
+        point_plot_config
+        | {
+            "color": "g",
+        }
+        | init_point_plot_config
+    )
+
     ax.plot(_x0[0], _x0[1], **init_point_plot_config)
 
     # Update function for FuncAnimation
@@ -81,7 +87,10 @@ def traj_animation(
         nonlocal _x0
         sol = solve_ivp(ode_func, t_span, _x0, t_eval=t_eval, args=(param,), rtol=1e-8)
         _x0 = sol.y[:, -1]
-        new_line = ax.plot(sol.y[0, :], sol.y[1, :], **traj_plot_config)
+        if plot_traj:
+            new_line = ax.plot(sol.y[0, :], sol.y[1, :], **traj_plot_config)
+        else:
+            new_line = []
         new_point = ax.plot(_x0[0], _x0[1], **point_plot_config)
         return new_line + new_point
 
@@ -89,45 +98,51 @@ def traj_animation(
     ## Key press
     def on_press(event):
         print("press ", event.key, "| ", end="")
-        nonlocal is_paused, _x0, init_point_plot_config
+        nonlocal is_paused, _x0, init_point_plot_config, _param_step, plot_traj
 
-        def erase_lines():
+        def erase_lines(say="Erased."):
             for l in list(ax.lines):
                 l.remove()
             ax.plot(_x0[0], _x0[1], **init_point_plot_config)
+            print(say)
 
         match event.key:
             case "p":
-                print(f"x0: {np.array2string(_x0, separator=", ", sign="+")}, Parameter: {param}")
+                print(
+                    "x0:",
+                    np.array2string(_x0, separator=", ", sign="+"),
+                    f"Parameter: {param}",
+                )
             case "e":
                 erase_lines()
-                print("Erased.")
-            case "a":
-                param.increment(_pk[0], -inc_param_step)
-            case "d":
-                param.increment(_pk[0], inc_param_step)
-            case "w":
-                param.increment(_pk[1], inc_param_step)
-            case "s":
-                param.increment(_pk[1], -inc_param_step)
+            case "f":
+                plot_traj = not plot_traj
+                erase_lines(f"Plot trajectory: {plot_traj}")
+            case "w" | "a" | "s" | "d":
+                _i = 0 if event.key in ("a", "d") else 1
+                _s = _param_step if event.key in ("d", "w") else -_param_step
+                param.increment(_pk[_i], _s)
+                erase_lines(f"Parameter updated: {param}")
+            case "=" | "-" | "0":
+                if event.key == "=":
+                    _param_step *= 10
+                elif event.key == "-":
+                    _param_step /= 10
+                else:
+                    _param_step = inc_param_step
+                print(f"Increment step updated: {_param_step:.2e}")
             case " ":
                 is_paused = not is_paused
                 if is_paused:
                     ani.event_source.stop()
-                    print("Paused.")
                 else:
                     ani.event_source.start()
-                    print("Resumed.")
+                print("Paused." if is_paused else "Resumed.")
             case "q":
                 print("Quit.")
                 sys.exit()
             case _:
                 print("No action for the key.")
-
-        # If updated parameter
-        if event.key in ("a", "d", "w", "s"):
-            erase_lines()
-            print(f"Parameter updated: {param}")
 
         sys.stdout.flush()
 
@@ -148,8 +163,53 @@ def traj_animation(
     fig.canvas.mpl_connect("button_press_event", on_click)
 
     # Animation
-    ani = FuncAnimation(fig, update, frames=itr_max, interval=50)
+    ani = FuncAnimation(fig, update, frames=100, interval=50)
     plt.show()
+
+
+def dump_trajectory(
+    vec_x: np.ndarray,
+    param: Parameter,
+    traj_resolution: int = 100,
+    itr_max: int = 100,
+) -> dict[str, np.ndarray]:
+    """Dump trajectory data of Duffing oscillator.
+
+    Parameters
+    ----------
+    vec_x : np.ndarray
+        Initial state vector.
+    param : Parameter
+        Parameter object.
+    traj_resolution : int, optional
+        Resolution of the trajectory, by default 100, meaning 100 points per period.
+    itr_max : int, optional
+        Maximum number of iterations, by default 1000.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Trajectory data.
+    """
+    t_span = (0, base_period)
+    t_eval = np.linspace(*t_span, traj_resolution)
+    traj = np.zeros((itr_max * traj_resolution, 3))
+    points = np.zeros((itr_max, 2))
+
+    _x0 = vec_x.copy()
+    for i in range(itr_max):
+        sol = solve_ivp(ode_func, t_span, _x0, t_eval=t_eval, args=(param,), rtol=1e-8)
+        traj[i * traj_resolution : (i + 1) * traj_resolution, 0] = (
+            sol.t + i * base_period
+        )
+        traj[i * traj_resolution : (i + 1) * traj_resolution, 1:] = sol.y.T
+        points[i] = _x0
+        _x0 = sol.y[:, -1]
+
+    return {
+        "traj": traj.tolist(),
+        "points": points.tolist(),
+    }
 
 
 def main():
@@ -164,23 +224,45 @@ def main():
         raise IndexError("Usage: python traj.py [data.json]")
 
     if mode == "animation":
+        config = {
+            "vec_x": x0,
+            "param": param,
+            "inc_param_keys": ["B", "B0"],
+            "inc_param_step": 0.01,
+            "traj_resolution": 100,
+            "traj_plot_config": {},
+            "point_plot_config": {},
+            "init_point_plot_config": {},
+        }
+        for key in config:
+            if key in data.get("traj_animation", {}):
+                config[key] = data["traj_animation"][key]
+
         ax_config = {
             "xlim": (-1, 1),
             "ylim": (-1, 1),
             "aspect": "equal",
             "xlabel": "x",
             "ylabel": "y",
-        } | data.get("ax_config", {})
-
-        inc_param_keys = data.get("inc_param_keys", ["B", "B0"])
+        }
+        if "ax_config" in data.get("traj_animation", {}):
+            ax_config.update(data["traj_animation"]["ax_config"])
 
         fig, ax = plt.subplots(figsize=(8, 7))
         ax.set(**ax_config)
         ax.grid()
 
-        traj_animation(fig, ax, x0, param, inc_param_keys)
+        traj_animation(fig=fig, ax=ax, **config)
+
     elif mode == "dump":
-        pass
+        traj_file = sys.argv[1].replace(".json", "_traj.csv")
+        poin_file = sys.argv[1].replace(".json", "_poin.csv")
+        res = dump_trajectory(x0, param)
+
+        with open(traj_file, "w") as f:
+            np.savetxt(f, res["traj"], delimiter=",")
+        with open(poin_file, "w") as f:
+            np.savetxt(f, res["points"], delimiter=",")
     else:
         raise ValueError(f"Invalid mode: {mode}")
 
