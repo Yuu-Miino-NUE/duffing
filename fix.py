@@ -1,5 +1,6 @@
 import sys, json
-from typing import Callable
+from typing import Any
+from collections.abc import Callable
 import numpy as np
 from scipy.optimize import root
 
@@ -12,7 +13,7 @@ def fix_func(vec_x: np.ndarray, pmap: Callable[[np.ndarray], np.ndarray]) -> np.
 
 def fix(
     vec_x: np.ndarray, param: Parameter, period: int, verbose: bool = False
-) -> dict[str, np.ndarray | str | bool]:
+) -> dict[str, Any]:
     x0 = vec_x.copy()
     pmap = lambda x: poincare_map(x, param, itr_cnt=period)["x"]
 

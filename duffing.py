@@ -146,6 +146,7 @@ def poincare_map(
     itr_cnt: int = 1,
     calc_jac: bool = False,
     pjac_key: str | None = None,
+    inverse: bool = False,
 ) -> dict[str, np.ndarray]:
     """Poincare map for Duffing oscillator.
 
@@ -184,7 +185,9 @@ def poincare_map(
 
     # Calculate the Poincare map
     for _ in range(itr_cnt):
-        sol = solve_ivp(func, [0, base_period], x0, rtol=1e-8)
+        sol = solve_ivp(
+            func, [0, base_period if not inverse else -base_period], x0, rtol=1e-8
+        )
 
         x0[:2] = sol.y[:2, -1]
         if calc_jac:
