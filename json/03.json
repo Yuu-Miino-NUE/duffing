@@ -8,6 +8,6 @@
         "B": 0.3
     },
     "period": 1,
-    "map_u": 4,
-    "map_s": 3
+    "maps_u": 4,
+    "maps_s": 3
 }

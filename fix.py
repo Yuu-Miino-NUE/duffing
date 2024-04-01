@@ -16,8 +16,9 @@ def fix(
 ) -> dict[str, Any]:
     x0 = vec_x.copy()
     pmap = lambda x: poincare_map(x, param, itr_cnt=period)["x"]
+    func = lambda x: fix_func(x, pmap)
 
-    sol = root(fix_func, x0, args=(pmap,))
+    sol = root(func, x0)
 
     if sol.success:
         xfix = sol.x
