@@ -6,5 +6,5 @@
         "B": 0.3
     },
     "period": 1,
-    "manifold_mode": "dump"
+    "manifold_mode": "search"
 }
