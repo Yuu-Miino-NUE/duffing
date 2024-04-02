@@ -132,10 +132,11 @@ def append_info_for_mani(mani: np.ndarray) -> np.ndarray:
     return np.hstack((mani, curve.reshape(-1, 1), dist.reshape(-1, 1)))
 
 
-def draw_manifold(ax: Axes, um_data: np.ndarray, sm_data: np.ndarray):
-    ax.plot(um_data[:, 0], um_data[:, 1], "r-", label="Unstable manifold")
-    ax.plot(sm_data[:, 0], sm_data[:, 1], "b-", label="Stable manifold")
-    ax.legend()
+def draw_manifold(ax: Axes, um_data: list[np.ndarray], sm_data: list[np.ndarray]):
+    for i in range(2):
+        ax.plot(um_data[i][:, 0], um_data[i][:, 1], "r-")
+        ax.plot(sm_data[i][:, 0], sm_data[i][:, 1], "b-")
+    ax.legend(["Unstable manifold", "Stable manifold"])
 
 
 def setup_finder(
@@ -298,19 +299,15 @@ def main():
     print(fix_result)
 
     x_fix = fix_result["x"]
-    unstable_vec = None
-    stable_vec = None
 
-    for i in range(2):
-        if fix_result["abs_eig"][i] > 1:
-            unstable_vec = fix_result["vec"][:, i]
-            u_itr_cnt = 2 if np.sign(fix_result["eig"][i]) == -1 else 1
-        else:
-            stable_vec = fix_result["vec"][:, i]
-            s_itr_cnt = 2 if np.sign(fix_result["eig"][i]) == -1 else 1
+    if fix_result["u_edim"] != 1 or fix_result["s_edim"] != 1:
+        raise ValueError("Invalid dimension of eigenspace")
 
-    if unstable_vec is None or stable_vec is None:
-        raise ValueError("Eigenvectors are not found")
+    unstable_vec = fix_result["u_evec"][:, 0]
+    stable_vec = fix_result["s_evec"][:, 0]
+
+    u_itr_cnt = 2 if np.sign(fix_result["u_eig"][0]) == -1 else 1
+    s_itr_cnt = 2 if np.sign(fix_result["s_eig"][0]) == -1 else 1
 
     unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt)["x"]
     stable_func = lambda x: poincare_map(x, param, itr_cnt=s_itr_cnt, inverse=True)["x"]
@@ -352,30 +349,36 @@ def main():
             allowed_distance=1e-2,
         )
     elif mode == "dump":
-        unstable_x = x_fix + 1e-2 * unstable_vec
-        unstable_eig_space = np.linspace(
-            unstable_x, unstable_func(unstable_x), 10, endpoint=False
-        )
+        u_manis = []
+        s_manis = []
+        for s in [1, -1]:
+            unstable_x = x_fix + s * 1e-2 * unstable_vec
+            unstable_eig_space = np.linspace(
+                unstable_x, unstable_func(unstable_x), 10, endpoint=False
+            )
 
-        stable_x = x_fix - 1e-2 * stable_vec
-        stable_eig_space = np.linspace(
-            stable_x, stable_func(stable_x), 10, endpoint=False
-        )
+            stable_x = x_fix + s * 1e-2 * stable_vec
+            stable_eig_space = np.linspace(
+                stable_x, stable_func(stable_x), 10, endpoint=False
+            )
 
-        unstable_mani = dump_manifold(
-            unstable_eig_space, unstable_func, itr_cnt=4, allowed_distance=1e-2
-        )
-        unstable_mani = append_info_for_mani(unstable_mani)
+            unstable_mani = dump_manifold(
+                unstable_eig_space, unstable_func, itr_cnt=4, allowed_distance=1e-2
+            )
+            unstable_mani = append_info_for_mani(unstable_mani)
+            u_manis.append(unstable_mani)
 
-        stable_mani = dump_manifold(
-            stable_eig_space, stable_func, itr_cnt=4, allowed_distance=1e-2
-        )
-        stable_mani = append_info_for_mani(stable_mani)
+            stable_mani = dump_manifold(
+                stable_eig_space, stable_func, itr_cnt=4, allowed_distance=1e-2
+            )
+            stable_mani = append_info_for_mani(stable_mani)
+            s_manis.append(stable_mani)
 
-        with open(sys.argv[1].replace(".json", "_unstable_mani.csv"), "w") as f:
-            np.savetxt(f, unstable_mani, delimiter=",")
-        with open(sys.argv[1].replace(".json", "_stable_mani.csv"), "w") as f:
-            np.savetxt(f, stable_mani, delimiter=",")
+        for i in range(2):
+            with open(sys.argv[1].replace(".json", f"_unstable_mani{i}.csv"), "w") as f:
+                np.savetxt(f, u_manis[i], delimiter=",")
+            with open(sys.argv[1].replace(".json", f"_stable_mani{i}.csv"), "w") as f:
+                np.savetxt(f, s_manis[i], delimiter=",")
 
     elif mode == "search":
         eps_u = 1e-4
@@ -392,12 +395,19 @@ def main():
         ax.grid()
 
         try:
-            um_data = np.loadtxt(
-                sys.argv[1].replace(".json", "_unstable_mani.csv"), delimiter=","
-            )
-            sm_data = np.loadtxt(
-                sys.argv[1].replace(".json", "_stable_mani.csv"), delimiter=","
-            )
+            um_data = [
+                np.loadtxt(
+                    sys.argv[1].replace(".json", f"_unstable_mani{i}.csv"),
+                    delimiter=",",
+                )
+                for i in range(2)
+            ]
+            sm_data = [
+                np.loadtxt(
+                    sys.argv[1].replace(".json", f"_stable_mani{i}.csv"), delimiter=","
+                )
+                for i in range(2)
+            ]
         except FileNotFoundError:
             raise FileNotFoundError("Manifold data not found")
 

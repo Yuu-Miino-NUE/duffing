@@ -20,7 +20,8 @@ def homoclinic_func(
 
     ret = np.zeros(4)
     ret[0:2] = pmap_u(xu) - pmap_s(xs)
-    ret[2:4] = np.dot(norm_u, xu - xfix), np.dot(norm_s, xs - xfix)
+    ret[2] = np.dot(norm_u, xu - xfix)
+    ret[3] = np.dot(norm_s, xs - xfix)
 
     return ret
 
@@ -39,22 +40,17 @@ def homoclinic(
 
     x_fix = fix_result["x"]
 
-    unstable_vec = None
-    stable_vec = None
+    if fix_result["u_edim"] != 1 or fix_result["s_edim"] != 1:
+        raise ValueError("Invalid dimension of eigenspace")
 
     norm_mat = np.array([[0, 1], [-1, 0]])
-    for i in range(2):
-        if fix_result["abs_eig"][i] > 1:
-            unstable_vec = fix_result["vec"][:, i]
-            norm_u = norm_mat @ unstable_vec
-            u_itr_cnt = 2 if np.sign(fix_result["eig"][i]) == -1 else 1
-        else:
-            stable_vec = fix_result["vec"][:, i]
-            norm_s = norm_mat @ stable_vec
-            s_itr_cnt = 2 if np.sign(fix_result["eig"][i]) == -1 else 1
+    unstable_vec = fix_result["u_evec"][:, 0]
+    norm_u = norm_mat @ unstable_vec
+    stable_vec = fix_result["s_evec"][:, 0]
+    norm_s = norm_mat @ stable_vec
 
-    if unstable_vec is None or stable_vec is None:
-        raise ValueError("Eigenvectors are not found")
+    u_itr_cnt = 2 if np.sign(fix_result["u_eig"][0]) == -1 else 1
+    s_itr_cnt = 2 if np.sign(fix_result["s_eig"][0]) == -1 else 1
 
     unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt * maps_u)["x"]
     stable_func = lambda x: poincare_map(

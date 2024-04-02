@@ -25,12 +25,33 @@ def fix(
         jac = poincare_map(xfix, param, itr_cnt=period, calc_jac=True)["jac"]
         eig, vec = np.linalg.eig(jac)
 
+        u_edim = np.sum(np.abs(np.real(eig)) > 1)
+        c_edim = np.sum(np.abs(np.real(eig)) == 1)
+        s_edim = np.sum(np.abs(np.real(eig)) < 1)
+
+        u_eigs = eig[np.abs(np.real(eig)) > 1]
+        c_eigs = eig[np.abs(np.real(eig)) == 1]
+        s_eigs = eig[np.abs(np.real(eig)) < 1]
+
+        u_evecs = vec[:, np.abs(np.real(eig)) > 1]
+        c_evecs = vec[:, np.abs(np.real(eig)) == 1]
+        s_evecs = vec[:, np.abs(np.real(eig)) < 1]
+
         return {
             "success": True,
             "x": xfix,
             "eig": eig,
             "abs_eig": np.abs(eig),
-            "vec": vec,
+            "evec": vec,
+            "u_edim": u_edim,
+            "c_edim": c_edim,
+            "s_edim": s_edim,
+            "u_eig": u_eigs,
+            "c_eig": c_eigs,
+            "s_eig": s_eigs,
+            "u_evec": u_evecs,
+            "c_evec": c_evecs,
+            "s_evec": s_evecs,
         }
     else:
         return {"success": False, "error": sol.message}
