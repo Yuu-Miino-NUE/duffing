@@ -122,14 +122,14 @@ def fix(
         Fixed or periodic point information.
     """
     x0 = vec_x.copy()
-    pmap = lambda x: poincare_map(x, param, itr_cnt=period)["x"]
+    pmap = lambda x: poincare_map(x, param, itr_cnt=period).x
     func = lambda x: fix_func(x, pmap)
 
     sol = root(func, x0)
 
     if sol.success:
         xfix = sol.x
-        jac = poincare_map(xfix, param, itr_cnt=period, calc_jac=True)["jac"]
+        jac = poincare_map(xfix, param, itr_cnt=period, calc_jac=True).jac
         eig, vec = np.linalg.eig(jac)
 
         u_edim = np.sum(np.abs(np.real(eig)) > 1, dtype=int)

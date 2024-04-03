@@ -141,10 +141,10 @@ def homoclinic(
     u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
     s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
 
-    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt * maps_u)["x"]
+    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt * maps_u).x
     stable_func = lambda x: poincare_map(
         x, param, itr_cnt=s_itr_cnt * maps_s, inverse=True
-    )["x"]
+    ).x
 
     func = lambda x: homoclinic_func(
         x, unstable_func, stable_func, x_fix, norm_u, norm_s

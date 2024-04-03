@@ -140,6 +140,25 @@ def ode_func_calc_jac(
 base_period = 2 * np.pi
 
 
+class PoincareMapResult:
+    """Result of the Poincare map."""
+
+    def __init__(
+        self,
+        x: np.ndarray,
+        jac: np.ndarray = np.empty((2, 2)),
+        pjac: np.ndarray = np.empty(2),
+        str_pjac_key: str | None = None,
+    ) -> None:
+        self.x = x
+        self.jac = jac
+        self.pjac = pjac
+        self.pjac_key = str_pjac_key
+
+    def __repr__(self) -> str:
+        return f"PoincareMapResult({self.x=}, {self.jac=}, {self.pjac=})"
+
+
 def poincare_map(
     vec_x: Any,
     param: Parameter,
@@ -147,7 +166,7 @@ def poincare_map(
     calc_jac: bool = False,
     pjac_key: str | None = None,
     inverse: bool = False,
-) -> dict[str, np.ndarray]:
+) -> PoincareMapResult:
     """Poincare map for Duffing oscillator.
 
     Parameters
@@ -165,7 +184,7 @@ def poincare_map(
 
     Returns
     -------
-    dict[str, np.ndarray]
+    PoincareMapResult
         Result of the Poincare map. If `calc_jac` is True, Jacobian matrix is also returned.
         If `pjac_key` is not None, Jacobian matrix with respect to the parameter is also returned.
     """
@@ -199,12 +218,14 @@ def poincare_map(
             jac = jack @ jac
 
     # Return the result
-    ret = {"x": np.array(x0[:2])}
+    ret = PoincareMapResult(x0[:2])
+
     if calc_jac:
-        ret["jac"] = jac
+        ret.jac = jac
 
         if pjac_key is not None:
-            ret[f"jac_p({pjac_key})"] = jac_p
+            ret.pjac = jac_p
+            ret.pjac_key = pjac_key
 
     return ret
 

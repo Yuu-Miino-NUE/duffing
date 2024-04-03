@@ -450,8 +450,8 @@ def main():
     u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
     s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
 
-    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt)["x"]
-    stable_func = lambda x: poincare_map(x, param, itr_cnt=s_itr_cnt, inverse=True)["x"]
+    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt).x
+    stable_func = lambda x: poincare_map(x, param, itr_cnt=s_itr_cnt, inverse=True).x
 
     # Setup figure and axes
     if mode in ["animation", "search"]:
@@ -465,7 +465,7 @@ def main():
         ax.set(**ax_config)
         ax.grid()
 
-    # Setup manifold calculation
+    # Main process
     config = data.get("manifold_setup", {})
     if mode in ["animation", "dump"]:
         allowed_distance = config.get("allowed_distance", {"u": 1e-2, "s": 1e-2})
@@ -557,15 +557,14 @@ def main():
                 for i in range(2)
             ]
         except FileNotFoundError:
-            raise FileNotFoundError("Manifold data not found")
+            raise FileNotFoundError(
+                "Manifold data not found. Run with 'dump' mode first."
+            )
 
         draw_manifold(ax, um_data, sm_data)
 
-        unstable_vec *= eps["u"]
-        stable_vec *= eps["s"]
-
         funcs = {"u": unstable_func, "s": stable_func}
-        vecs = {"u": unstable_vec, "s": stable_vec}
+        vecs = {"u": unstable_vec * eps["u"], "s": stable_vec * eps["s"]}
 
         setup_finder(fig, ax, x_fix, funcs, vecs)
 
