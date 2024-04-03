@@ -466,7 +466,7 @@ def main():
         ax.grid()
 
     # Main process
-    config = data.get("manifold_setup", {})
+    config = data.get("manifold_config", {})
     if mode in ["animation", "dump"]:
         allowed_distance = config.get("allowed_distance", {"u": 1e-2, "s": 1e-2})
         curvature_threshold = config.get("curvature_threshold", {"u": 0.1, "s": 0.1})

@@ -6,5 +6,8 @@
         "B": 0.3
     },
     "period": 1,
-    "manifold_mode": "search"
+    "manifold_mode": "animation",
+    "manifold_config": {
+        "max_frames": 2
+    }
 }

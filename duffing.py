@@ -205,7 +205,7 @@ def poincare_map(
     # Calculate the Poincare map
     for _ in range(itr_cnt):
         sol = solve_ivp(
-            func, [0, base_period if not inverse else -base_period], x0, rtol=1e-8
+            func, [0, base_period if not inverse else -base_period], x0, rtol=1e-10
         )
 
         x0[:2] = sol.y[:2, -1]

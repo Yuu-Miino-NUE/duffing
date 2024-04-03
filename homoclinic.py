@@ -123,8 +123,7 @@ def homoclinic(
 
     fix_result = fix(xfix0, param, period)
     if not fix_result.success:
-        print(fix_result.message)
-        return
+        raise ValueError(fix_result.message)
 
     x_fix = fix_result.x
 
@@ -141,9 +140,11 @@ def homoclinic(
     u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
     s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
 
-    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt * maps_u).x
+    unstable_func = lambda x: poincare_map(
+        x, param, itr_cnt=u_itr_cnt * maps_u, calc_jac=True
+    ).x
     stable_func = lambda x: poincare_map(
-        x, param, itr_cnt=s_itr_cnt * maps_s, inverse=True
+        x, param, itr_cnt=s_itr_cnt * maps_s, inverse=True, calc_jac=True
     ).x
 
     func = lambda x: homoclinic_func(
@@ -188,7 +189,9 @@ def main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    print(homoclinic(x0, period, param, xu0, xs0, maps_u, maps_s))
+    res = homoclinic(x0, period, param, xu0, xs0, maps_u, maps_s)
+    print(res)
+    print(res.xu.tolist(), res.xs.tolist())
 
 
 if __name__ == "__main__":

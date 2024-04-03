@@ -1,0 +1,17 @@
+{
+    "x0": [-0.99741899,  0.27471557],
+    "parameters": {
+        "k": 0.05,
+        "B0": 0,
+        "B": 0.2375914124426352
+    },
+    "period": 1,
+    "manifold_mode": "animation",
+    "manifold_config": {
+        "vec_size": {
+            "u": 1e-4,
+            "s": 1e-4
+        },
+        "max_frames": 8
+    }
+}
