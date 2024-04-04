@@ -10,6 +10,38 @@ from homoclinic import homoclinic, homoclinic_func, tvec_diff
 
 
 class HbfResult(IterItems):
+    """Homoclinic bifurcation point calculation result.
+
+    Attributes
+    ----------
+    success : bool
+        Success flag.
+    message : str
+        Message of the calculation result.
+    xu : np.ndarray
+        Homoclinic point in the unstable manifold.
+    xs : np.ndarray
+        Homoclinic point in the stable manifold.
+    xh : np.ndarray
+        Homoclinic point.
+    xh_err : np.ndarray
+        Error of the homoclinic point, calculated as xh_u - xh_s.
+    xfix : np.ndarray
+        Fixed point or periodic point.
+    tvec_diff : float
+        Difference of the tangent vectors at the homoclinic point.
+    parameters : Parameter
+        Parameter object.
+    maps_u : int
+        Count of forward mapping from xu to xh.
+    maps_s : int
+        Count of backward mapping from xs to xh.
+    hbf_param_key : str
+        Bifurcation parameter key to control.
+    period : int
+        Period of the fixed or periodic point.
+    """
+
     def __init__(
         self,
         success: bool,
@@ -66,6 +98,37 @@ def hbf_func(
     param_key: str,
     verbose: bool = False,
 ) -> np.ndarray:
+    """Function for evaluating homoclinic bifurcation point.
+
+    Parameters
+    ----------
+    vars : np.ndarray
+        Initial points of the fixed or periodic point, homoclinic point in the unstable manifold, homoclinic point in the stable manifold, and bifurcation parameter. The shape of the array is (7,).
+    period : int
+        Period of the periodic point. For fixed point, set 1.
+    pmap : Callable[[np.ndarray, Parameter], PoincareMapResult]
+        Poincare map function.
+    pmap_u : Callable[[np.ndarray, Parameter], PoincareMapResult]
+        Function to map from [xu, yu] to [xh, yh].
+    pmap_s : Callable[[np.ndarray, Parameter], PoincareMapResult]
+        Function to map from [xs, ys] to [xh, yh].
+    param : Parameter
+        Parameter object.
+    param_key : str
+        Bifurcation parameter key to control.
+    verbose : bool, optional
+        Print progress, by default False.
+
+    Returns
+    -------
+    np.ndarray
+        Residual vector.
+
+    Raises
+    ------
+    ValueError
+        If the fixed point calculation fails.
+    """
     x_fix0 = vars[0:2]
     x_u0 = vars[2:4]
     x_s0 = vars[4:6]
@@ -110,7 +173,42 @@ def hbf(
     maps_u: int,
     maps_s: int,
     verbose: bool = False,
-):
+) -> HbfResult:
+    """Homoclinic point calculation.
+
+    Parameters
+    ----------
+    xfix0 : np.ndarray
+        Fixed or periodic point.
+    period : int
+        Period of the fixed or periodic point.
+    param : Parameter
+        Parameter object.
+    param_key : str
+        Bifurcation parameter key to control.
+    xu0 : np.ndarray
+        Initial point of the homoclinic point in the unstable manifold.
+    xs0 : np.ndarray
+        Initial point of the homoclinic point in the stable manifold.
+    maps_u : int
+        Count of forward mapping from xu0 to xh.
+    maps_s : int
+        Count of backward mapping from xs0 to xh.
+    verbose : bool, optional
+        Print progress, by default False.
+
+    Returns
+    -------
+    HbfResult
+        Homoclinic point calculation result.
+
+    Raises
+    ------
+    ValueError
+        If the fixed point calculation fails.
+    ValueError
+        If the homoclinic point calculation fails.
+    """
     fix_result = fix(xfix0, param, period)
     homo_result = homoclinic(xfix0, period, param, xu0, xs0, maps_u, maps_s)
 
