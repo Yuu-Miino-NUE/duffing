@@ -1,11 +1,10 @@
 import sys, json
-from typing import Any
 from collections.abc import Callable
 import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
-from duffing import poincare_map, Parameter
+from system import poincare_map, Parameter
 
 
 class FixResult(IterItems):
@@ -15,7 +14,7 @@ class FixResult(IterItems):
     ----------
     success : bool
         Success flag.
-    x : np.ndarray
+    xfix : np.ndarray
         Fixed or periodic point.
     eig : np.ndarray
         Eigenvalues of the Jacobian matrix of the Poincare map at the fixed or periodic point.

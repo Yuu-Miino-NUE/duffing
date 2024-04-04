@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import solve_ivp
 
-from duffing import ode_func, Parameter, base_period
+from system import ode_func, Parameter, base_period
 
 
 def traj_animation(

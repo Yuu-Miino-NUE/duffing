@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
-from duffing import Parameter, PoincareMapResult, poincare_map
+from system import Parameter, PoincareMapResult, poincare_map
 from fix import fix, fix_func
 from homoclinic import homoclinic, homoclinic_func, tvec_diff
 

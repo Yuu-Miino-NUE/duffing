@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
-from duffing import poincare_map, Parameter
+from system import poincare_map, Parameter
 from fix import fix
 
 
