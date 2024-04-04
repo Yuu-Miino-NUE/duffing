@@ -272,7 +272,7 @@ def hbf(
         return HbfResult(success=False, message=sol.message)
 
 
-def main():
+def __main():
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
@@ -295,4 +295,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    __main()

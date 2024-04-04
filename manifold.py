@@ -421,7 +421,7 @@ def setup_finder(
     fig.canvas.mpl_connect("button_press_event", on_click)
 
 
-def main():
+def _main():
     # Load JSON
     try:
         with open(sys.argv[1], "r") as f:
@@ -581,4 +581,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    _main()
