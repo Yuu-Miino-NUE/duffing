@@ -1,3 +1,5 @@
+"""Module to calculate and draw manifolds of a fixed point."""
+
 import sys, json
 
 from collections.abc import Callable
@@ -6,25 +8,26 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+import numpy
 import numpy as np
 
 from system import poincare_map, Parameter
 from fix import fix
 
 
-def calc_curvature(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+def calc_curvature(x: numpy.ndarray, y: numpy.ndarray) -> numpy.ndarray:
     """Calculate curvature of the curve.
 
     Parameters
     ----------
-    x : np.ndarray
+    x : numpy.ndarray
         x-coordinates of the curve.
-    y : np.ndarray
+    y : numpy.ndarray
         y-coordinates of the curve.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Curvatures of the curve for each point.
     """
     dx_dt = np.gradient(x)
@@ -46,19 +49,19 @@ def calc_curvature(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     return curvature
 
 
-def remove_similar(x: np.ndarray, tol: float = 1e-2) -> np.ndarray:
+def remove_similar(x: numpy.ndarray, tol: float = 1e-2) -> numpy.ndarray:
     """Remove similar points in the array.
 
     Parameters
     ----------
-    x : np.ndarray
+    x : numpy.ndarray
         Array of points.
     tol : float, optional
         Tolerance of the distance to determine similarity, by default 1e-2.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Array of unique points.
     """
     x = np.array(x)
@@ -70,20 +73,20 @@ def remove_similar(x: np.ndarray, tol: float = 1e-2) -> np.ndarray:
 
 
 def calculate_next_manifold(
-    domain: np.ndarray,
-    func: Callable[[np.ndarray], np.ndarray],
+    domain: numpy.ndarray,
+    func: Callable[[numpy.ndarray], numpy.ndarray],
     allowed_distance: float = 1e-2,
     curvature_threshold: float = 0.1,
     m_max: int = 100,
     final: bool = False,
-) -> np.ndarray:
+) -> numpy.ndarray:
     """Calculate next manifold.
 
     Parameters
     ----------
-    domain : np.ndarray
+    domain : numpy.ndarray
         Domain of the calculation.
-    func : Callable[[np.ndarray], np.ndarray]
+    func : Callable[[numpy.ndarray], numpy.ndarray]
         Function to calculate the next point.
     allowed_distance : float, optional
         Allowed distance between points, by default 1e-2. In the case of the distance between points is less than this value and the curvature is less than the threshold, the calculation stops.
@@ -96,7 +99,7 @@ def calculate_next_manifold(
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Calculated manifold.
     """
     image = np.array([func(x) for x in domain])
@@ -148,9 +151,9 @@ def calculate_next_manifold(
 def manifold_animation(
     fig: Figure,
     ax: Axes,
-    x_fix: np.ndarray,
-    domain: dict[str, np.ndarray],
-    func: dict[str, Callable[[np.ndarray], np.ndarray]],
+    xfix: numpy.ndarray,
+    domain: dict[str, numpy.ndarray],
+    func: dict[str, Callable[[numpy.ndarray], numpy.ndarray]],
     max_frames: int = 3,
     allowed_distance: dict[str, float] = {"u": 1e-2, "s": 1e-2},
     curvature_threshold: dict[str, float] = {"u": 0.1, "s": 0.1},
@@ -164,11 +167,11 @@ def manifold_animation(
         Figure object.
     ax : Axes
         Axes object.
-    x_fix : np.ndarray
+    xfix : numpy.ndarray
         Fixed point.
-    domain : dict[str, np.ndarray]
+    domain : dict[str, numpy.ndarray]
         Domain of the unstable manifold and the stable manifold.
-    func : dict[str, Callable[[np.ndarray], np.ndarray]]
+    func : dict[str, Callable[[numpy.ndarray], numpy.ndarray]]
         Function to calculate the next point of the unstable manifold and the stable manifold.
     max_frames : int, optional
         Maximum number of frames of animation, by default 3.
@@ -179,7 +182,7 @@ def manifold_animation(
     m_max : dict[str, int], optional
         Maximum number of domain divider, by default 100 for both manifolds.
     """
-    ax.plot(x_fix[0], x_fix[1], "ko")
+    ax.plot(xfix[0], xfix[1], "ko")
     colors = {"u": "r", "s": "b"}
 
     for us in ["u", "s"]:
@@ -214,8 +217,8 @@ def manifold_animation(
 
 
 def dump_manifold(
-    domain: np.ndarray,
-    func: Callable[[np.ndarray], np.ndarray],
+    domain: numpy.ndarray,
+    func: Callable[[numpy.ndarray], numpy.ndarray],
     itr_cnt: int = 3,
     allowed_distance: float = 1e-2,
     curvature_threshold: float = 0.1,
@@ -225,9 +228,9 @@ def dump_manifold(
 
     Parameters
     ----------
-    domain : np.ndarray
+    domain : numpy.ndarray
         Domain of the manifold.
-    func : Callable[[np.ndarray], np.ndarray]
+    func : Callable[[numpy.ndarray], numpy.ndarray]
         Function to calculate the next point of the manifold.
     itr_cnt : int, optional
         Iteration count of the calculation, by default 3.
@@ -240,7 +243,7 @@ def dump_manifold(
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Dumped manifold data.
     """
     _domain = domain.copy()
@@ -257,17 +260,17 @@ def dump_manifold(
     return ret
 
 
-def append_info_for_mani(mani: np.ndarray) -> np.ndarray:
+def append_info_for_mani(mani: numpy.ndarray) -> numpy.ndarray:
     """Append curvature and distance information to the manifold data.
 
     Parameters
     ----------
-    mani : np.ndarray
+    mani : numpy.ndarray
         Manifold data.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Manifold data with curvature and distance information.
     """
     curve = calc_curvature(mani[:, 0], mani[:, 1])
@@ -275,16 +278,16 @@ def append_info_for_mani(mani: np.ndarray) -> np.ndarray:
     return np.hstack((mani, curve.reshape(-1, 1), dist.reshape(-1, 1)))
 
 
-def draw_manifold(ax: Axes, um_data: list[np.ndarray], sm_data: list[np.ndarray]):
+def draw_manifold(ax: Axes, um_data: list[numpy.ndarray], sm_data: list[numpy.ndarray]):
     """Draw manifolds.
 
     Parameters
     ----------
     ax : Axes
         Axes object.
-    um_data : list[np.ndarray]
+    um_data : list[numpy.ndarray]
         Unstable manifold data.
-    sm_data : list[np.ndarray]
+    sm_data : list[numpy.ndarray]
         Stable manifold data.
     """
     for i in range(2):
@@ -296,9 +299,9 @@ def draw_manifold(ax: Axes, um_data: list[np.ndarray], sm_data: list[np.ndarray]
 def setup_finder(
     fig: Figure,
     ax: Axes,
-    x_fix: np.ndarray,
-    funcs: dict[str, Callable[[np.ndarray], np.ndarray]],
-    vecs: dict[str, np.ndarray],
+    xfix: numpy.ndarray,
+    funcs: dict[str, Callable[[numpy.ndarray], numpy.ndarray]],
+    vecs: dict[str, numpy.ndarray],
     itr_cnts: dict[str, int] = {"u": 5, "s": 5},
     bases: dict[str, int] = {"u": 1, "s": 1},
 ):
@@ -310,11 +313,11 @@ def setup_finder(
         Figure object.
     ax : Axes
         Axes object.
-    x_fix : np.ndarray
+    xfix : numpy.ndarray
         Fixed point.
-    funcs : dict[str, Callable[[np.ndarray], np.ndarray]]
+    funcs : dict[str, Callable[[numpy.ndarray], numpy.ndarray]]
         Function to calculate the next point of the unstable and stable manifolds.
-    unstable_vec : dict[str, np.ndarray]
+    u_evec : dict[str, numpy.ndarray]
         Unstable and stable eigenvectors.
     itr_cnts : dict[str, int], optional
         Iteration counts of the calculation, by default 5 for both manifolds.
@@ -323,8 +326,8 @@ def setup_finder(
     """
 
     def plot_points(
-        x0: np.ndarray,
-        func: Callable[[np.ndarray], np.ndarray],
+        x0: numpy.ndarray,
+        func: Callable[[numpy.ndarray], numpy.ndarray],
         itr_cnt: int,
         color: str,
     ) -> Line2D:
@@ -345,7 +348,7 @@ def setup_finder(
 
     args = {
         k: {
-            "x0": x_fix + bases[k] * vecs[k],
+            "x0": xfix + bases[k] * vecs[k],
             "func": funcs[k],
             "color": colors[k],
         }
@@ -371,14 +374,14 @@ def setup_finder(
 
                 points["u"].remove()
 
-                xu = x_fix + (base_u + bias_base * bias_u) * vecs["u"]
+                xu = xfix + (base_u + bias_base * bias_u) * vecs["u"]
                 args["u"]["x0"] = xu
                 points["u"] = plot_points(**args["u"], itr_cnt=itr_cnts["u"])
 
                 fig.canvas.draw()
                 print(
                     f"{itr_cnts['u']} points in Unstable manifold:\tx_u(0) = {xu}\t|",
-                    f"err={np.linalg.norm(xu - x_fix):.3e}",
+                    f"err={np.linalg.norm(xu - xfix):.3e}",
                 )
             case "up" | "down" | "w" | "s":
                 if event.key in ["up", "down"]:
@@ -388,14 +391,14 @@ def setup_finder(
 
                 points["s"].remove()
 
-                xs = x_fix + (base_s + bias_base * bias_s) * vecs["s"]
+                xs = xfix + (base_s + bias_base * bias_s) * vecs["s"]
                 args["s"]["x0"] = xs
                 points["s"] = plot_points(**args["s"], itr_cnt=itr_cnts["s"])
 
                 fig.canvas.draw()
                 print(
                     f"{itr_cnts['s']} points in Stable manifold:\tx_s(0) = {xs}\t|",
-                    f"err={np.linalg.norm(xs - x_fix):.3e}",
+                    f"err={np.linalg.norm(xs - xfix):.3e}",
                 )
             case "0" | "-" | "=":
                 if event.key == "0":
@@ -407,10 +410,10 @@ def setup_finder(
 
                 print(f"Factor for moving step: {bias_base}")
             case "p":
-                xu = x_fix + (base_u + bias_base * bias_u) * vecs["u"]
-                xs = x_fix + (base_s + bias_base * bias_s) * vecs["s"]
+                xu = xfix + (base_u + bias_base * bias_u) * vecs["u"]
+                xs = xfix + (base_s + bias_base * bias_s) * vecs["s"]
                 print(
-                    f'"x0": {x_fix.tolist()}, "xu": {xu.tolist()}, "xs": {xs.tolist()}'
+                    f'"x0": {xfix.tolist()}, "xu": {xu.tolist()}, "xs": {xs.tolist()}'
                 )
             case "q":
                 plt.close()
@@ -453,12 +456,39 @@ def setup_finder(
     fig.canvas.mpl_connect("button_press_event", on_click)
 
 
+def prepare_by_fix(xfix0: numpy.ndarray, param: Parameter, period):
+    # Calculate fixed point and
+    fix_result = fix(xfix0, param, period=period)
+    if not fix_result.success:
+        raise ValueError(fix_result.message)
+
+    # Check fixed point and eigenspaces
+    if (xfix := fix_result.xfix) is None:
+        raise ValueError("Failed to find fixed point")
+    if fix_result.u_edim != 1 or fix_result.s_edim != 1:
+        raise ValueError("Invalid dimension of eigenspace")
+    if (u_evec := fix_result.u_evec) is None:
+        raise ValueError("Failed to find unstable eigenvector")
+    if (s_evec := fix_result.s_evec) is None:
+        raise ValueError("Failed to find stable eigenvector")
+    if (u_eig := fix_result.u_eig) is None:
+        raise ValueError("Failed to find unstable eigenvalue")
+    if (s_eig := fix_result.s_eig) is None:
+        raise ValueError("Failed to find stable eigenvalue")
+
+    # Setup variables
+    u_itr_cnt = 2 if np.sign(u_eig[0]) == -1 else 1
+    s_itr_cnt = 2 if np.sign(s_eig[0]) == -1 else 1
+
+    return (xfix, u_evec[:, 0], s_evec[:, 0], u_itr_cnt, s_itr_cnt)
+
+
 def _main():
     # Load JSON
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
-        x0 = np.array(data.get("x0", [0, 0]))
+        xfix0 = np.array(data.get("xfix", [0, 0]))
         param = Parameter(**data.get("parameters", {}))
         period = data.get("period", 1)
         mode = data.get("manifold_mode", "animation")
@@ -467,23 +497,14 @@ def _main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    # Calculate fixed point and
-    fix_result = fix(x0, param, period=period)
-    if not fix_result.success:
-        raise ValueError("Failed to find fixed point: {fix_result.message}")
-    if fix_result.u_edim != 1 or fix_result.s_edim != 1:
-        raise ValueError("Invalid dimension of eigenspace")
+    xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix0, param, period)
 
-    # Setup variables
-    x_fix = fix_result.xfix
-    unstable_vec = fix_result.u_evec[:, 0]
-    stable_vec = fix_result.s_evec[:, 0]
-
-    u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
-    s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
-
-    unstable_func = lambda x: poincare_map(x, param, itr_cnt=u_itr_cnt).x
-    stable_func = lambda x: poincare_map(x, param, itr_cnt=s_itr_cnt, inverse=True).x
+    u_func = lambda x: poincare_map(
+        x, param, itr_cnt=u_itr_cnt * period, calc_jac=True
+    ).x
+    s_func = lambda x: poincare_map(
+        x, param, itr_cnt=s_itr_cnt * period, inverse=True, calc_jac=True
+    ).x
 
     # Setup figure and axes
     if mode in ["animation", "search", "draw"]:
@@ -511,11 +532,11 @@ def _main():
 
             # Setup eigenspaces
             eigspace = {}
-            vecs = {"u": unstable_vec, "s": stable_vec}
-            funcs = {"u": unstable_func, "s": stable_func}
+            vecs = {"u": u_evec, "s": s_evec}
+            funcs = {"u": u_func, "s": s_func}
             for us in ["u", "s"]:
                 eigspace[us] = [
-                    x_fix + eps * vecs[us] for eps in (-vec_size[us], vec_size[us])
+                    xfix + eps * vecs[us] for eps in (-vec_size[us], vec_size[us])
                 ]
                 eigspace[us] = np.linspace(
                     funcs[us](eigspace[us][0]),
@@ -528,7 +549,7 @@ def _main():
             manifold_animation(
                 fig=fig,
                 ax=ax,
-                x_fix=x_fix,
+                xfix=xfix,
                 domain=eigspace,
                 func=funcs,
                 max_frames=max_frames,
@@ -538,15 +559,15 @@ def _main():
         else:  # mode == "dump"
             itr_cnt = config.get("itr_cnt", {"u": 5, "s": 5})
             manis = {"u": [], "s": []}
-            vecs = {"u": unstable_vec, "s": stable_vec}
-            funcs = {"u": unstable_func, "s": stable_func}
+            vecs = {"u": u_evec, "s": s_evec}
+            funcs = {"u": u_func, "s": s_func}
             labels = {"u": "unstable", "s": "stable"}
 
             for s in [1, -1]:
                 eigspace = {}
                 _mani = {}
                 for us in ["u", "s"]:
-                    eigspace[us] = [x_fix + s * vec_size[us] * vecs[us]]
+                    eigspace[us] = [xfix + s * vec_size[us] * vecs[us]]
                     eigspace[us] = np.linspace(
                         eigspace[us][0],
                         funcs[us](eigspace[us][0]),
@@ -601,10 +622,10 @@ def _main():
             eps = config.get("vec_size", {"u": 1e-4, "s": 1e-4})
             itr_cnts = config.get("itr_cnt", {"u": 5, "s": 5})
 
-            funcs = {"u": unstable_func, "s": stable_func}
-            vecs = {"u": unstable_vec * eps["u"], "s": stable_vec * eps["s"]}
+            funcs = {"u": u_func, "s": s_func}
+            vecs = {"u": u_evec * eps["u"], "s": s_evec * eps["s"]}
 
-            setup_finder(fig, ax, x_fix, funcs, vecs, itr_cnts)
+            setup_finder(fig, ax, xfix, funcs, vecs, itr_cnts)
 
         plt.show()
 

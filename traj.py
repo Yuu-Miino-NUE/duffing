@@ -1,6 +1,9 @@
+"""Module for trajectory animation and data dump of system."""
+
 from typing import Any
 import sys, json
 
+import numpy
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -15,7 +18,7 @@ from system import ode_func, Parameter, base_period
 def traj_animation(
     fig: Figure,
     ax: Axes,
-    vec_x: np.ndarray,
+    vec_x: numpy.ndarray,
     param: Parameter,
     inc_param_keys: str | tuple[str, str],
     inc_param_step: float = 0.01,
@@ -24,7 +27,7 @@ def traj_animation(
     point_plot_config: dict[str, Any] = {},
     init_point_plot_config: dict[str, Any] = {},
 ) -> None:
-    """Animate trajectory of Duffing oscillator.
+    """Animate trajectory of ODE system.
 
     Parameters
     ----------
@@ -168,16 +171,16 @@ def traj_animation(
 
 
 def dump_trajectory(
-    vec_x: np.ndarray,
+    vec_x: numpy.ndarray,
     param: Parameter,
     traj_resolution: int = 100,
     itr_max: int = 100,
-) -> dict[str, np.ndarray]:
-    """Dump trajectory data of Duffing oscillator.
+) -> dict[str, numpy.ndarray]:
+    """Dump trajectory data of ODE system.
 
     Parameters
     ----------
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         Initial state vector.
     param : Parameter
         Parameter object.
@@ -188,7 +191,7 @@ def dump_trajectory(
 
     Returns
     -------
-    dict[str, np.ndarray]
+    dict[str, numpy.ndarray]
         Trajectory data.
     """
     t_span = (0, base_period)

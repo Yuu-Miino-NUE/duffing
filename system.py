@@ -1,4 +1,7 @@
+"""Module to define Duffing oscillator."""
+
 from typing import Any
+import numpy
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -30,21 +33,21 @@ class Parameter(IterItems):
         setattr(self, key, getattr(self, key) + step)
 
 
-def ode_func(t: float, vec_x: np.ndarray, param: Parameter) -> np.ndarray:
+def ode_func(t: float, vec_x: numpy.ndarray, param: Parameter) -> numpy.ndarray:
     """Duffing oscillator ODE function.
 
     Parameters
     ----------
     t : float
         Time.
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         State vector.
     param : Parameter
         Parameter object.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Derivative of the state vector.
     """
     x, y = vec_x
@@ -56,21 +59,21 @@ def ode_func(t: float, vec_x: np.ndarray, param: Parameter) -> np.ndarray:
     return np.array([dxdt, dydt])
 
 
-def ode_func_jac_x(t: float, vec_x: np.ndarray, param: Parameter) -> np.ndarray:
+def _ode_func_jac_x(t: float, vec_x: numpy.ndarray, param: Parameter) -> numpy.ndarray:
     """Jacobian of the Duffing oscillator ODE function with respect to state vector.
 
     Parameters
     ----------
     t : float
         Time.
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         State vector.
     param : Parameter
         Parameter object.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Jacobian matrix.
     """
     x = vec_x[0]
@@ -79,23 +82,23 @@ def ode_func_jac_x(t: float, vec_x: np.ndarray, param: Parameter) -> np.ndarray:
     return np.array([[0, 1], [-3 * x**2, -k]])
 
 
-def ode_func_jac_p(
-    t: float, vec_x: np.ndarray, param: Parameter
-) -> dict[str, np.ndarray]:
+def _ode_func_jac_p(
+    t: float, vec_x: numpy.ndarray, param: Parameter
+) -> dict[str, numpy.ndarray]:
     """Jacobian of the Duffing oscillator ODE function with respect to parameter.
 
     Parameters
     ----------
     t : float
         Time.
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         State vector.
     param : Parameter
         Parameter object.
 
     Returns
     -------
-    dict[str, np.ndarray]
+    dict[str, numpy.ndarray]
         Jacobian matrix for each parameter.
     """
 
@@ -108,16 +111,16 @@ def ode_func_jac_p(
     }
 
 
-def ode_func_calc_jac(
-    t: float, vec_x: np.ndarray, param: Parameter, param_key: str | None = None
-) -> np.ndarray:
+def _ode_func_calc_jac(
+    t: float, vec_x: numpy.ndarray, param: Parameter, param_key: str | None = None
+) -> numpy.ndarray:
     """ODE function for calculating Jacobian matrix with respect to initial state and parameter.
 
     Parameters
     ----------
     t : float
         Time.
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         State vector.
     param : Parameter
         Parameter object.
@@ -126,16 +129,16 @@ def ode_func_calc_jac(
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Derivative of the Jacobian matrix.
     """
 
     phi = vec_x[0:2]
     dPhidX0 = vec_x[2:].reshape(2, 3, order="F")
 
-    ret = ode_func_jac_x(t, phi, param) @ dPhidX0
+    ret = _ode_func_jac_x(t, phi, param) @ dPhidX0
     if param_key is not None:
-        ret[:, 2] += ode_func_jac_p(t, phi, param)[param_key]
+        ret[:, 2] += _ode_func_jac_p(t, phi, param)[param_key]
 
     return ret.flatten(order="F")
 
@@ -144,13 +147,29 @@ base_period = 2 * np.pi
 
 
 class PoincareMapResult:
-    """Result of the Poincare map."""
+    """Result of the Poincare map calculation.
+
+    Attributes
+    ----------
+    x : numpy.ndarray
+        Image of x0 under the Poincare map. See :func:`system.poincare_map`.
+    jac : numpy.ndarray | None
+        Jacobian matrix of the Poincare map, if calculated.
+    pjac : numpy.ndarray | None
+        Jacobian matrix of the Poincare map with respect to the parameter, if calculated.
+    pjac_key : str | None
+        Key of the parameter to calculate Jacobian matrix.
+
+    See Also
+    --------
+    poincare_map
+    """
 
     def __init__(
         self,
-        x: np.ndarray,
-        jac: np.ndarray = np.empty((2, 2)),
-        pjac: np.ndarray = np.empty(2),
+        x: numpy.ndarray,
+        jac: numpy.ndarray | None = None,
+        pjac: numpy.ndarray | None = None,
         str_pjac_key: str | None = None,
     ) -> None:
         self.x = x
@@ -163,7 +182,7 @@ class PoincareMapResult:
 
 
 def poincare_map(
-    vec_x: Any,
+    x0: Any,
     param: Parameter,
     itr_cnt: int = 1,
     calc_jac: bool = False,
@@ -174,7 +193,7 @@ def poincare_map(
 
     Parameters
     ----------
-    vec_x : Any
+    x0 : Any
         State vector.
     param : Parameter
         Parameter object.
@@ -194,12 +213,12 @@ def poincare_map(
     # Setup variables
     if not calc_jac:
         func = lambda _t, _x: ode_func(_t, _x, param)
-        x0 = vec_x.copy()
+        _x0 = x0.copy()
     else:
         func = lambda _t, _x: np.hstack(
-            [ode_func(_t, _x[0:2], param), ode_func_calc_jac(_t, _x, param, pjac_key)]
+            [ode_func(_t, _x[0:2], param), _ode_func_calc_jac(_t, _x, param, pjac_key)]
         ).flatten()
-        x0 = np.hstack([vec_x, np.eye(2).flatten(), np.zeros(2)])
+        _x0 = np.hstack([x0, np.eye(2).flatten(), np.zeros(2)])
         jac = np.eye(2)
 
         if pjac_key is not None:
@@ -208,10 +227,10 @@ def poincare_map(
     # Calculate the Poincare map
     for _ in range(itr_cnt):
         sol = solve_ivp(
-            func, [0, base_period if not inverse else -base_period], x0, rtol=1e-10
+            func, [0, base_period if not inverse else -base_period], _x0, rtol=1e-10
         )
 
-        x0[:2] = sol.y[:2, -1]
+        _x0[:2] = sol.y[:2, -1]
         if calc_jac:
             jack = sol.y[2:6, -1].reshape(2, 2, order="F")
 
@@ -221,7 +240,7 @@ def poincare_map(
             jac = jack @ jac
 
     # Return the result
-    ret = PoincareMapResult(x0[:2])
+    ret = PoincareMapResult(_x0[:2])
 
     if calc_jac:
         ret.jac = jac

@@ -1,12 +1,16 @@
+"""Module to calculate homoclinic bifurcation point."""
+
 import sys, json
 from collections.abc import Callable
+import numpy
 import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
+from manifold import prepare_by_fix
 from system import Parameter, PoincareMapResult, poincare_map
 from fix import fix, fix_func
-from homoclinic import homoclinic, homoclinic_func, tvec_diff
+from homoclinic import homoclinic, homoclinic_func, calc_tvec_diff
 
 
 class HbfResult(IterItems):
@@ -18,15 +22,15 @@ class HbfResult(IterItems):
         Success flag.
     message : str
         Message of the calculation result.
-    xu : np.ndarray
+    xu : numpy.ndarray
         Homoclinic point in the unstable manifold.
-    xs : np.ndarray
+    xs : numpy.ndarray
         Homoclinic point in the stable manifold.
-    xh : np.ndarray
+    xh : numpy.ndarray
         Homoclinic point.
-    xh_err : np.ndarray
+    xh_err : numpy.ndarray
         Error of the homoclinic point, calculated as xh_u - xh_s.
-    xfix : np.ndarray
+    xfix : numpy.ndarray
         Fixed point or periodic point.
     tvec_diff : float
         Difference of the tangent vectors at the homoclinic point.
@@ -46,31 +50,31 @@ class HbfResult(IterItems):
         self,
         success: bool,
         message: str,
-        xu: np.ndarray = np.empty(2),
-        xs: np.ndarray = np.empty(2),
-        xh: np.ndarray = np.empty(2),
-        xh_err: np.ndarray = np.empty(2),
-        xfix: np.ndarray = np.empty(2),
-        tvec_diff: float = 0,
-        parameters: Parameter = Parameter(),
-        maps_u: int = -1,
-        maps_s: int = -1,
-        hbf_param_key: str = "",
-        period: int = 1,
+        xfix: numpy.ndarray | None = None,
+        period: int | None = None,
+        xu: numpy.ndarray | None = None,
+        xs: numpy.ndarray | None = None,
+        xh: numpy.ndarray | None = None,
+        xh_err: numpy.ndarray | None = None,
+        tvec_diff: float | None = None,
+        parameters: Parameter | None = None,
+        maps_u: int | None = None,
+        maps_s: int | None = None,
+        hbf_param_key: str | None = None,
     ) -> None:
         self.success = success
         self.message = message
+        self.xfix = xfix
+        self.period = period
         self.xu = xu
         self.xs = xs
         self.xh = xh
         self.xh_err = xh_err
-        self.xfix = xfix
         self.tvec_diff = tvec_diff
         self.parameters = parameters
         self.maps_u = maps_u
         self.maps_s = maps_s
         self.hbf_param_key = hbf_param_key
-        self.period = period
         super().__init__(
             [
                 "xfix",
@@ -89,39 +93,39 @@ class HbfResult(IterItems):
 
 
 def hbf_func(
-    vars: np.ndarray,
+    vars: numpy.ndarray,
     period: int,
-    pmap: Callable[[np.ndarray, Parameter], PoincareMapResult],
-    pmap_u: Callable[[np.ndarray, Parameter], PoincareMapResult],
-    pmap_s: Callable[[np.ndarray, Parameter], PoincareMapResult],
+    pmap: Callable[[numpy.ndarray, Parameter], PoincareMapResult],
+    pmap_u: Callable[[numpy.ndarray, Parameter], PoincareMapResult],
+    pmap_s: Callable[[numpy.ndarray, Parameter], PoincareMapResult],
     param: Parameter,
-    param_key: str,
+    hbf_param_key: str,
     verbose: bool = False,
-) -> np.ndarray:
+) -> numpy.ndarray:
     """Function for evaluating homoclinic bifurcation point.
 
     Parameters
     ----------
-    vars : np.ndarray
+    vars : numpy.ndarray
         Initial points of the fixed or periodic point, homoclinic point in the unstable manifold, homoclinic point in the stable manifold, and bifurcation parameter. The shape of the array is (7,).
     period : int
         Period of the periodic point. For fixed point, set 1.
-    pmap : Callable[[np.ndarray, Parameter], PoincareMapResult]
+    pmap : Callable[[numpy.ndarray, Parameter], PoincareMapResult]
         Poincare map function.
-    pmap_u : Callable[[np.ndarray, Parameter], PoincareMapResult]
+    pmap_u : Callable[[numpy.ndarray, Parameter], PoincareMapResult]
         Function to map from [xu, yu] to [xh, yh].
-    pmap_s : Callable[[np.ndarray, Parameter], PoincareMapResult]
+    pmap_s : Callable[[numpy.ndarray, Parameter], PoincareMapResult]
         Function to map from [xs, ys] to [xh, yh].
     param : Parameter
         Parameter object.
-    param_key : str
+    hbf_param_key : str
         Bifurcation parameter key to control.
     verbose : bool, optional
         Print progress, by default False.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Residual vector.
 
     Raises
@@ -129,34 +133,30 @@ def hbf_func(
     ValueError
         If the fixed point calculation fails.
     """
-    x_fix0 = vars[0:2]
+    xfix0 = vars[0:2]
     x_u0 = vars[2:4]
     x_s0 = vars[4:6]
-    setattr(param, param_key, vars[6])
+    setattr(param, hbf_param_key, vars[6])
 
-    fix_result = fix(x_fix0, param, period)
-    if not fix_result.success:
-        raise ValueError(fix_result.message)
+    xfix, u_evec, s_evec = prepare_by_fix(xfix0, param, period)[0:3]
 
     norm_mat = np.array([[0, 1], [-1, 0]])
-    nvec_u = norm_mat @ fix_result.u_evec[:, 0]
-    nvec_s = norm_mat @ fix_result.s_evec[:, 0]
+    nvec_u = norm_mat @ u_evec
+    nvec_s = norm_mat @ s_evec
 
     _pmap = lambda x: pmap(x, param).x
     _pmap_u = lambda x: pmap_u(x, param).x
     _pmap_s = lambda x: pmap_s(x, param).x
 
+    if (jac_u := pmap_u(x_u0, param).jac) is None:
+        raise ValueError("Failed to calculate Jacobian matrix of pmap_u.")
+    if (jac_s := pmap_s(x_s0, param).jac) is None:
+        raise ValueError("Failed to calculate Jacobian matrix of pmap_s.")
+
     ret = np.empty(7)
-    ret[0:2] = fix_func(x_fix0, _pmap)
-    ret[2:6] = homoclinic_func(
-        vars[2:6], _pmap_u, _pmap_s, fix_result.xfix, nvec_u, nvec_s
-    )
-    ret[6] = tvec_diff(
-        pmap_u(x_u0, param).jac,
-        pmap_s(x_s0, param).jac,
-        fix_result.u_evec[:, 0],
-        fix_result.s_evec[:, 0],
-    )
+    ret[0:2] = fix_func(xfix0, _pmap)
+    ret[2:6] = homoclinic_func(vars[2:6], _pmap_u, _pmap_s, xfix, nvec_u, nvec_s)
+    ret[6] = calc_tvec_diff(jac_u, jac_s, u_evec, s_evec)
 
     if verbose:
         print("Running... :", [f"{r:+.3e}" for r in ret], end="\r")
@@ -164,12 +164,12 @@ def hbf_func(
 
 
 def hbf(
-    xfix0: np.ndarray,
+    xfix0: numpy.ndarray,
     period: int,
     param: Parameter,
-    param_key: str,
-    xu0: np.ndarray,
-    xs0: np.ndarray,
+    hbf_param_key: str,
+    xu0: numpy.ndarray,
+    xs0: numpy.ndarray,
     maps_u: int,
     maps_s: int,
     verbose: bool = False,
@@ -178,17 +178,17 @@ def hbf(
 
     Parameters
     ----------
-    xfix0 : np.ndarray
+    xfix0 : numpy.ndarray
         Fixed or periodic point.
     period : int
         Period of the fixed or periodic point.
     param : Parameter
         Parameter object.
-    param_key : str
+    hbf_param_key : str
         Bifurcation parameter key to control.
-    xu0 : np.ndarray
+    xu0 : numpy.ndarray
         Initial point of the homoclinic point in the unstable manifold.
-    xs0 : np.ndarray
+    xs0 : numpy.ndarray
         Initial point of the homoclinic point in the stable manifold.
     maps_u : int
         Count of forward mapping from xu0 to xh.
@@ -217,8 +217,13 @@ def hbf(
     if not homo_result.success:
         raise ValueError(homo_result.message)
 
-    u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
-    s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
+    if (u_eig := fix_result.u_eig) is None:
+        raise ValueError("Failed to find unstable eigenvalue")
+    if (s_eig := fix_result.s_eig) is None:
+        raise ValueError("Failed to find stable eigenvalue")
+
+    u_itr_cnt = 2 if np.sign(u_eig[0]) == -1 else 1
+    s_itr_cnt = 2 if np.sign(s_eig[0]) == -1 else 1
 
     pmap = lambda x, p: poincare_map(x, p, calc_jac=True)
     pmap_u = lambda x, p: poincare_map(x, p, itr_cnt=u_itr_cnt * maps_u, calc_jac=True)
@@ -227,12 +232,12 @@ def hbf(
     )
 
     func = lambda x: hbf_func(
-        x, period, pmap, pmap_u, pmap_s, param, param_key, verbose
+        x, period, pmap, pmap_u, pmap_s, param, hbf_param_key, verbose
     )
 
     vars = np.empty(7)
     vars[0:6] = np.concatenate((xfix0, xu0, xs0))
-    vars[6] = getattr(param, param_key)
+    vars[6] = getattr(param, hbf_param_key)
 
     sol = root(func, vars)
     if verbose:
@@ -242,30 +247,39 @@ def hbf(
         xfix = sol.x[0:2]
         xu = sol.x[2:4]
         xs = sol.x[4:6]
-        setattr(param, param_key, sol.x[6])
+        setattr(param, hbf_param_key, sol.x[6])
 
         fix_result = fix(xfix, param, period)
-        xfix = fix_result.xfix
+        if (xfix := fix_result.xfix) is None:
+            raise ValueError("Fixed point calculation failed.")
 
         homo_result = homoclinic(xfix, period, param, xu, xs, maps_u, maps_s)
-        xu = homo_result.xu
-        xs = homo_result.xs
-        xh_u = homo_result.xh
-        xh_err = homo_result.xh_err
+        if not homo_result.success:
+            raise ValueError("Homoclinic point calculation failed.")
+        if (xu := homo_result.xu) is None:
+            raise ValueError("Failed to find xu.")
+        if (xs := homo_result.xs) is None:
+            raise ValueError("Failed to find xs.")
+        if (xh := homo_result.xh) is None:
+            raise ValueError("Failed to find xh.")
+        if (xh_err := homo_result.xh_err) is None:
+            raise ValueError("Failed to calculate xh_err.")
+        if (tvec_diff := homo_result.tvec_diff) is None:
+            raise ValueError("Failed to calculate tvec_diff.")
 
         return HbfResult(
             success=True,
             message="Success",
             xu=xu,
             xs=xs,
-            xh=xh_u,
+            xh=xh,
             xh_err=xh_err,
             xfix=xfix,
-            tvec_diff=homo_result.tvec_diff,
+            tvec_diff=tvec_diff,
             parameters=param,
             maps_u=maps_u,
             maps_s=maps_s,
-            hbf_param_key=param_key,
+            hbf_param_key=hbf_param_key,
             period=period,
         )
     else:
@@ -283,13 +297,13 @@ def __main():
         xs0 = np.array(data.get("xs", [0, 0]))
         maps_u = data.get("maps_u", 1)
         maps_s = data.get("maps_s", 1)
-        param_key = data.get("hbf_param_key", "B")
+        hbf_param_key = data.get("hbf_param_key", "B")
     except IndexError:
         raise IndexError("Usage: python fix.py [data.json]")
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    res = hbf(x0, period, param, param_key, xu0, xs0, maps_u, maps_s, verbose=True)
+    res = hbf(x0, period, param, hbf_param_key, xu0, xs0, maps_u, maps_s, verbose=True)
     print(res)
     res.dump(sys.stdout)
 

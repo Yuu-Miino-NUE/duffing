@@ -1,5 +1,8 @@
+"""Module to calculate fixed point."""
+
 import sys, json
 from collections.abc import Callable
+import numpy
 import numpy as np
 from scipy.optimize import root
 
@@ -14,13 +17,13 @@ class FixResult(IterItems):
     ----------
     success : bool
         Success flag.
-    xfix : np.ndarray
+    xfix : numpy.ndarray
         Fixed or periodic point.
-    eig : np.ndarray
+    eig : numpy.ndarray
         Eigenvalues of the Jacobian matrix of the Poincare map at the fixed or periodic point.
-    abs_eig : np.ndarray
+    abs_eig : numpy.ndarray
         Absolute values of the eigenvalues.
-    evec : np.ndarray
+    evec : numpy.ndarray
         Eigenvectors of the Jacobian matrix.
     u_edim : int
         Number of unstable eigenvalues.
@@ -28,17 +31,17 @@ class FixResult(IterItems):
         Number of center eigenvalues.
     s_edim : int
         Number of stable eigenvalues.
-    u_eig : np.ndarray
+    u_eig : numpy.ndarray
         Unstable eigenvalues.
-    c_eig : np.ndarray
+    c_eig : numpy.ndarray
         Center eigenvalues.
-    s_eig : np.ndarray
+    s_eig : numpy.ndarray
         Stable eigenvalues.
-    u_evec : np.ndarray
+    u_evec : numpy.ndarray
         Unstable eigenvectors.
-    c_evec : np.ndarray
+    c_evec : numpy.ndarray
         Center eigenvectors.
-    s_evec : np.ndarray
+    s_evec : numpy.ndarray
         Stable eigenvectors.
     message : str
         Message of the calculation result.
@@ -48,21 +51,21 @@ class FixResult(IterItems):
         self,
         success: bool,
         message: str,
-        xfix: np.ndarray = np.empty(2),
-        eig: np.ndarray = np.empty(2),
-        abs_eig: np.ndarray = np.empty(2),
-        evec: np.ndarray = np.empty((2, 2)),
-        u_edim: int = -1,
-        c_edim: int = -1,
-        s_edim: int = -1,
-        u_eig: np.ndarray = np.empty(0),
-        c_eig: np.ndarray = np.empty(0),
-        s_eig: np.ndarray = np.empty(0),
-        u_evec: np.ndarray = np.empty((2, 0)),
-        c_evec: np.ndarray = np.empty((2, 0)),
-        s_evec: np.ndarray = np.empty((2, 0)),
-        period: int = 1,
-        parameters: Parameter = Parameter(),
+        xfix: numpy.ndarray | None = None,
+        eig: numpy.ndarray | None = None,
+        abs_eig: numpy.ndarray | None = None,
+        evec: numpy.ndarray | None = None,
+        u_edim: int | None = None,
+        c_edim: int | None = None,
+        s_edim: int | None = None,
+        u_eig: numpy.ndarray | None = None,
+        c_eig: numpy.ndarray | None = None,
+        s_eig: numpy.ndarray | None = None,
+        u_evec: numpy.ndarray | None = None,
+        c_evec: numpy.ndarray | None = None,
+        s_evec: numpy.ndarray | None = None,
+        period: int | None = None,
+        parameters: Parameter | None = None,
     ):
         self.success = success
         self.message = message
@@ -87,43 +90,41 @@ class FixResult(IterItems):
         return f"FixResult({self.success=}, {self.xfix=}, {self.eig=}, {self.abs_eig=}, {self.evec=}, {self.u_edim=}, {self.c_edim=}, {self.s_edim=}, {self.u_eig=}, {self.c_eig=}, {self.s_eig=}, {self.u_evec=}, {self.c_evec=}, {self.s_evec=}, {self.message=})"
 
 
-def fix_func(vec_x: np.ndarray, pmap: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
+def fix_func(
+    vec_x: numpy.ndarray, pmap: Callable[[numpy.ndarray], numpy.ndarray]
+) -> numpy.ndarray:
     """Function for evaluating fixed or periodic point.
 
     Parameters
     ----------
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         Initial point.
-    pmap : Callable[[np.ndarray], np.ndarray]
+    pmap : Callable[[numpy.ndarray], numpy.ndarray]
         Poincare map function.
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Residual vector.
     """
     return pmap(vec_x) - vec_x
 
 
-def fix(
-    vec_x: np.ndarray, param: Parameter, period: int = 1, verbose: bool = False
-) -> FixResult:
+def fix(vec_x: numpy.ndarray, param: Parameter, period: int = 1) -> FixResult:
     """Fixed or periodic point calculation.
 
     Parameters
     ----------
-    vec_x : np.ndarray
+    vec_x : numpy.ndarray
         Initial state vector of the fixed or periodic point.
     param : Parameter
         Parameter object.
     period : int
         Period of the target periodic point, by default 1, meaning the fixed point.
-    verbose : bool, optional
-        Verbose mode, by default False.
 
     Returns
     -------
-    dict[str, Any]
+    FixResult
         Fixed or periodic point information.
     """
     x0 = vec_x.copy()
@@ -134,7 +135,12 @@ def fix(
 
     if sol.success:
         xfix = sol.x
-        jac = poincare_map(xfix, param, itr_cnt=period, calc_jac=True).jac
+        if (
+            jac := poincare_map(xfix, param, itr_cnt=period, calc_jac=True).jac
+        ) is None:
+            raise ValueError(
+                "Jacobian matrix is not calculated though fix is successful."
+            )
         eig, vec = np.linalg.eig(jac)
 
         u_edim = np.sum(np.abs(np.real(eig)) > 1, dtype=int)
@@ -173,6 +179,7 @@ def fix(
 
 
 def _main():
+    # Load data from JSON file
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
@@ -184,7 +191,10 @@ def _main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
+    # Calculate fixed or periodic point
     res = fix(x0, param, period)
+
+    # Print the result
     print(dict(res))
     res.dump(sys.stdout)
 
