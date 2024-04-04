@@ -3,11 +3,42 @@ from collections.abc import Callable
 import numpy as np
 from scipy.optimize import root
 
+from core import IterItems
 from duffing import poincare_map, Parameter
 from fix import fix
 
 
-class HomoclinicResult:
+def tvec_diff(
+    jac_u: np.ndarray, jac_s: np.ndarray, eig_u: np.ndarray, eig_s: np.ndarray
+) -> float:
+    """Calculate the difference of the tangent vectors at the homoclinic point.
+
+    Parameters
+    ----------
+    jac_u : np.ndarray
+        Jacobian matrix at the homoclinic point in the unstable manifold.
+    jac_s : np.ndarray
+        Jacobian matrix at the homoclinic point in the stable manifold.
+    eig_u : np.ndarray
+        Unstable eigenvector of the fixed point.
+    eig_s : np.ndarray
+        Stable eigenvector of the fixed point.
+
+    Returns
+    -------
+    float
+        Difference of the tangent vectors at the homoclinic point.
+    """
+    tvec_u = jac_u @ eig_u
+    tvec_s = jac_s @ eig_s
+
+    tvec_u /= np.linalg.norm(tvec_u)
+    tvec_s /= np.linalg.norm(tvec_s)
+
+    return np.linalg.det(np.vstack((tvec_u, tvec_s)).T)
+
+
+class HomoclinicResult(IterItems):
     """Homoclinic point calculation result.
 
     Attributes
@@ -22,6 +53,10 @@ class HomoclinicResult:
         Homoclinic point forward from xu and backward from xs.
     xh_err : float
         Error of the homoclinic point, calculated as xh_u - xh_s.
+    xfix: np.ndarray
+        Fixed point.
+    tvec_diff: float
+        Difference of the tangent vectors at the homoclinic point.
     message : str
         Message of the calculation result.
     """
@@ -34,16 +69,40 @@ class HomoclinicResult:
         xs: np.ndarray = np.empty(2),
         xh: np.ndarray = np.empty(2),
         xh_err: np.ndarray = np.empty(2),
+        xfix: np.ndarray = np.empty(2),
+        period: int = 1,
+        maps_u: int = -1,
+        maps_s: int = -1,
+        parameters: Parameter = Parameter(),
+        tvec_diff: float = 0,
     ) -> None:
         self.success = success
+        self.message = message
         self.xu = xu
         self.xs = xs
         self.xh = xh
         self.xh_err = xh_err
-        self.message = message
+        self.xfix = xfix
+        self.tvec_diff = tvec_diff
+        self.period = period
+        self.maps_u = maps_u
+        self.maps_s = maps_s
+        self.parameters = parameters
+
+        super().__init__(
+            [
+                "xfix",
+                "xu",
+                "xs",
+                "parameters",
+                "period",
+                "maps_u",
+                "maps_s",
+            ]
+        )
 
     def __repr__(self) -> str:
-        return f"HomoclinicResult({self.success=}, {self.message=}, {self.xu=}, {self.xs=}, {self.xh=}, {self.xh_err=})"
+        return f"HomoclinicResult({self.success=}, {self.message=}, {self.xu=}, {self.xs=}, {self.xh=}, {self.xh_err=}, {self.xfix=}, {self.tvec_diff=})"
 
 
 def homoclinic_func(
@@ -53,6 +112,7 @@ def homoclinic_func(
     xfix: np.ndarray,
     norm_u: np.ndarray,
     norm_s: np.ndarray,
+    allowed_dist: float = 1e-2,
 ) -> np.ndarray:
     """Function for evaluating homoclinic point.
 
@@ -78,6 +138,14 @@ def homoclinic_func(
     """
     xu = vars[0:2]
     xs = vars[2:4]
+
+    vu = xu - xfix
+    vs = xs - xfix
+
+    if (nu := np.linalg.norm(vu)) > allowed_dist:
+        raise ValueError(f"Invalid xu: too far from the fixed point. {nu}")
+    if (ns := np.linalg.norm(vs)) > allowed_dist:
+        raise ValueError(f"Invalid xs: too far from the fixed point. {ns}")
 
     ret = np.zeros(4)
     ret[0:2] = pmap_u(xu) - pmap_s(xs)
@@ -115,6 +183,11 @@ def homoclinic(
     maps_s : int
         Count of backward mapping from xs0 to xh.
 
+    Returns
+    -------
+    HomoclinicResult
+        Homoclinic point calculation result.
+
     Raises
     ------
     ValueError
@@ -125,7 +198,7 @@ def homoclinic(
     if not fix_result.success:
         raise ValueError(fix_result.message)
 
-    x_fix = fix_result.x
+    x_fix = fix_result.xfix
 
     if fix_result.u_edim != 1 or fix_result.s_edim != 1:
         raise ValueError("Invalid dimension of eigenspace")
@@ -142,13 +215,18 @@ def homoclinic(
 
     unstable_func = lambda x: poincare_map(
         x, param, itr_cnt=u_itr_cnt * maps_u, calc_jac=True
-    ).x
+    )
     stable_func = lambda x: poincare_map(
         x, param, itr_cnt=s_itr_cnt * maps_s, inverse=True, calc_jac=True
-    ).x
+    )
 
     func = lambda x: homoclinic_func(
-        x, unstable_func, stable_func, x_fix, norm_u, norm_s
+        x,
+        lambda x: unstable_func(x).x,
+        lambda x: stable_func(x).x,
+        x_fix,
+        norm_u,
+        norm_s,
     )
 
     sol = root(func, np.concatenate((xu0, xs0)))
@@ -158,14 +236,20 @@ def homoclinic(
         xs = sol.x[2:4]
         xh_u = unstable_func(xu)
         xh_s = stable_func(xs)
-        xh_err = xh_u - xh_s
+        xh_err = xh_u.x - xh_s.x
 
         return HomoclinicResult(
             success=True,
             xu=xu,
             xs=xs,
-            xh=xh_u,
+            xh=xh_u.x,
             xh_err=xh_err,
+            xfix=x_fix,
+            tvec_diff=tvec_diff(xh_u.jac, xh_s.jac, unstable_vec, stable_vec),
+            period=period,
+            maps_u=maps_u,
+            maps_s=maps_s,
+            parameters=param,
             message="Success",
         )
 
@@ -177,7 +261,7 @@ def main():
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
-        x0 = np.array(data.get("x0", [0, 0]))
+        x0 = np.array(data.get("xfix", [0, 0]))
         param = Parameter(**data.get("parameters", {}))
         period = data.get("period", 1)
         xu0 = np.array(data.get("xu", [0, 0]))
@@ -190,8 +274,8 @@ def main():
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
     res = homoclinic(x0, period, param, xu0, xs0, maps_u, maps_s)
-    print(res)
-    print(res.xu.tolist(), res.xs.tolist())
+    print(dict(res))
+    res.dump(sys.stdout)
 
 
 if __name__ == "__main__":

@@ -3,9 +3,57 @@ from collections.abc import Callable
 import numpy as np
 from scipy.optimize import root
 
+from core import IterItems
 from duffing import Parameter, PoincareMapResult, poincare_map
 from fix import fix, fix_func
-from homoclinic import homoclinic, homoclinic_func
+from homoclinic import homoclinic, homoclinic_func, tvec_diff
+
+
+class HbfResult(IterItems):
+    def __init__(
+        self,
+        success: bool,
+        message: str,
+        xu: np.ndarray = np.empty(2),
+        xs: np.ndarray = np.empty(2),
+        xh: np.ndarray = np.empty(2),
+        xh_err: np.ndarray = np.empty(2),
+        xfix: np.ndarray = np.empty(2),
+        tvec_diff: float = 0,
+        parameters: Parameter = Parameter(),
+        maps_u: int = -1,
+        maps_s: int = -1,
+        hbf_param_key: str = "",
+        period: int = 1,
+    ) -> None:
+        self.success = success
+        self.message = message
+        self.xu = xu
+        self.xs = xs
+        self.xh = xh
+        self.xh_err = xh_err
+        self.xfix = xfix
+        self.tvec_diff = tvec_diff
+        self.parameters = parameters
+        self.maps_u = maps_u
+        self.maps_s = maps_s
+        self.hbf_param_key = hbf_param_key
+        self.period = period
+        super().__init__(
+            [
+                "xfix",
+                "xu",
+                "xs",
+                "parameters",
+                "period",
+                "maps_u",
+                "maps_s",
+                "hbf_param_key",
+            ]
+        )
+
+    def __repr__(self) -> str:
+        return f"HbfResult({self.success}, {self.message}, {self.xu}, {self.xs}, {self.xh}, {self.xh_err}, {self.xfix}, {self.tvec_diff}, {self.parameters})"
 
 
 def hbf_func(
@@ -16,6 +64,7 @@ def hbf_func(
     pmap_s: Callable[[np.ndarray, Parameter], PoincareMapResult],
     param: Parameter,
     param_key: str,
+    verbose: bool = False,
 ) -> np.ndarray:
     x_fix0 = vars[0:2]
     x_u0 = vars[2:4]
@@ -25,13 +74,6 @@ def hbf_func(
     fix_result = fix(x_fix0, param, period)
     if not fix_result.success:
         raise ValueError(fix_result.message)
-
-    tvec_u = pmap_u(x_u0, param).jac @ fix_result.u_evec[:, 0]
-    tvec_s = pmap_s(x_s0, param).jac @ fix_result.s_evec[:, 0]
-
-    tvec_u /= np.linalg.norm(tvec_u)
-    tvec_s /= np.linalg.norm(tvec_s)
-    print(tvec_u, tvec_s)
 
     norm_mat = np.array([[0, 1], [-1, 0]])
     nvec_u = norm_mat @ fix_result.u_evec[:, 0]
@@ -44,11 +86,17 @@ def hbf_func(
     ret = np.empty(7)
     ret[0:2] = fix_func(x_fix0, _pmap)
     ret[2:6] = homoclinic_func(
-        vars[2:6], _pmap_u, _pmap_s, fix_result.x, nvec_u, nvec_s
+        vars[2:6], _pmap_u, _pmap_s, fix_result.xfix, nvec_u, nvec_s
     )
-    ret[6] = np.linalg.det(np.vstack((tvec_u, tvec_s)).T)
+    ret[6] = tvec_diff(
+        pmap_u(x_u0, param).jac,
+        pmap_s(x_s0, param).jac,
+        fix_result.u_evec[:, 0],
+        fix_result.s_evec[:, 0],
+    )
 
-    print(np.linalg.norm(ret[0:6]), ret[6])
+    if verbose:
+        print("Running... :", [f"{r:+.3e}" for r in ret], end="\r")
     return ret
 
 
@@ -61,12 +109,15 @@ def hbf(
     xs0: np.ndarray,
     maps_u: int,
     maps_s: int,
+    verbose: bool = False,
 ):
     fix_result = fix(xfix0, param, period)
     homo_result = homoclinic(xfix0, period, param, xu0, xs0, maps_u, maps_s)
 
-    if not fix_result.success or not homo_result.success:
+    if not fix_result.success:
         raise ValueError(fix_result.message)
+    if not homo_result.success:
+        raise ValueError(homo_result.message)
 
     u_itr_cnt = 2 if np.sign(fix_result.u_eig[0]) == -1 else 1
     s_itr_cnt = 2 if np.sign(fix_result.s_eig[0]) == -1 else 1
@@ -77,35 +128,70 @@ def hbf(
         x, p, itr_cnt=s_itr_cnt * maps_s, calc_jac=True, inverse=True
     )
 
-    func = lambda x: hbf_func(x, period, pmap, pmap_u, pmap_s, param, param_key)
+    func = lambda x: hbf_func(
+        x, period, pmap, pmap_u, pmap_s, param, param_key, verbose
+    )
 
     vars = np.empty(7)
     vars[0:6] = np.concatenate((xfix0, xu0, xs0))
     vars[6] = getattr(param, param_key)
 
     sol = root(func, vars)
+    if verbose:
+        print()
 
     if sol.success:
-        return sol.x
+        xfix = sol.x[0:2]
+        xu = sol.x[2:4]
+        xs = sol.x[4:6]
+        setattr(param, param_key, sol.x[6])
+
+        fix_result = fix(xfix, param, period)
+        xh_u = pmap_u(xu, param)
+        xh_s = pmap_s(xs, param)
+        xh_err = xh_u.x - xh_s.x
+
+        return HbfResult(
+            success=True,
+            message="Success",
+            xu=xu,
+            xs=xs,
+            xh=xh_u.x,
+            xh_err=xh_err,
+            xfix=xfix,
+            tvec_diff=tvec_diff(
+                xh_u.jac, xh_s.jac, fix_result.u_evec[:, 0], fix_result.s_evec[:, 0]
+            ),
+            parameters=param,
+            maps_u=maps_u,
+            maps_s=maps_s,
+            hbf_param_key=param_key,
+            period=period,
+        )
+    else:
+        return HbfResult(success=False, message=sol.message)
 
 
 def main():
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
-        x0 = np.array(data.get("x0", [0, 0]))
+        x0 = np.array(data.get("xfix", [0, 0]))
         param = Parameter(**data.get("parameters", {}))
         period = data.get("period", 1)
         xu0 = np.array(data.get("xu", [0, 0]))
         xs0 = np.array(data.get("xs", [0, 0]))
         maps_u = data.get("maps_u", 1)
         maps_s = data.get("maps_s", 1)
+        param_key = data.get("hbf_param_key", "B")
     except IndexError:
         raise IndexError("Usage: python fix.py [data.json]")
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    print(hbf(x0, period, param, "B", xu0, xs0, maps_u, maps_s).tolist())
+    res = hbf(x0, period, param, param_key, xu0, xs0, maps_u, maps_s, verbose=True)
+    print(res)
+    res.dump(sys.stdout)
 
 
 if __name__ == "__main__":

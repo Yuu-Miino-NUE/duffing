@@ -4,10 +4,11 @@ from collections.abc import Callable
 import numpy as np
 from scipy.optimize import root
 
+from core import IterItems
 from duffing import poincare_map, Parameter
 
 
-class FixResult:
+class FixResult(IterItems):
     """Fixed or periodic point calculation result.
 
     Attributes
@@ -48,7 +49,7 @@ class FixResult:
         self,
         success: bool,
         message: str,
-        x: np.ndarray = np.empty(2),
+        xfix: np.ndarray = np.empty(2),
         eig: np.ndarray = np.empty(2),
         abs_eig: np.ndarray = np.empty(2),
         evec: np.ndarray = np.empty((2, 2)),
@@ -61,10 +62,12 @@ class FixResult:
         u_evec: np.ndarray = np.empty((2, 0)),
         c_evec: np.ndarray = np.empty((2, 0)),
         s_evec: np.ndarray = np.empty((2, 0)),
+        period: int = 1,
+        parameters: Parameter = Parameter(),
     ):
         self.success = success
         self.message = message
-        self.x = x
+        self.xfix = xfix
         self.eig = eig
         self.abs_eig = abs_eig
         self.evec = evec
@@ -77,9 +80,12 @@ class FixResult:
         self.u_evec = u_evec
         self.c_evec = c_evec
         self.s_evec = s_evec
+        self.period = period
+        self.parameters = parameters
+        super().__init__(["xfix", "parameters", "period"])
 
     def __repr__(self) -> str:
-        return f"FixResult({self.success=}, {self.x=}, {self.eig=}, {self.abs_eig=}, {self.evec=}, {self.u_edim=}, {self.c_edim=}, {self.s_edim=}, {self.u_eig=}, {self.c_eig=}, {self.s_eig=}, {self.u_evec=}, {self.c_evec=}, {self.s_evec=}, {self.message=})"
+        return f"FixResult({self.success=}, {self.xfix=}, {self.eig=}, {self.abs_eig=}, {self.evec=}, {self.u_edim=}, {self.c_edim=}, {self.s_edim=}, {self.u_eig=}, {self.c_eig=}, {self.s_eig=}, {self.u_evec=}, {self.c_evec=}, {self.s_evec=}, {self.message=})"
 
 
 def fix_func(vec_x: np.ndarray, pmap: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
@@ -146,7 +152,7 @@ def fix(
 
         return FixResult(
             success=True,
-            x=xfix,
+            xfix=xfix,
             eig=eig,
             abs_eig=np.abs(eig),
             evec=vec,
@@ -159,6 +165,8 @@ def fix(
             u_evec=u_evecs,
             c_evec=c_evecs,
             s_evec=s_evecs,
+            period=period,
+            parameters=param,
             message="Success",
         )
     else:
@@ -169,7 +177,7 @@ def main():
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
-        x0 = np.array(data.get("x0", [0, 0]))
+        x0 = np.array(data.get("xfix", [0, 0]))
         param = Parameter(**data.get("parameters", {}))
         period = data.get("period", 1)
     except IndexError:
@@ -177,7 +185,9 @@ def main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    print(fix(x0, param, period))
+    res = fix(x0, param, period)
+    print(dict(res))
+    res.dump(sys.stdout)
 
 
 if __name__ == "__main__":

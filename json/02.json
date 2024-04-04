@@ -6,8 +6,16 @@
         "B": 0.3
     },
     "period": 1,
-    "manifold_mode": "animation",
+    "manifold_mode": "search",
     "manifold_config": {
-        "max_frames": 2
+        "max_frames": 7,
+        "vec_size": {
+            "u": 5e-5,
+            "s": 5e-5
+        },
+        "itr_cnt": {
+            "u": 8,
+            "s": 8
+        }
     }
 }

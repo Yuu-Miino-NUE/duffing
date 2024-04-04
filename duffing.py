@@ -2,14 +2,17 @@ from typing import Any
 import numpy as np
 from scipy.integrate import solve_ivp
 
+from core import IterItems
 
-class Parameter:
+
+class Parameter(IterItems):
     """Parameter class for Duffing oscillator."""
 
     def __init__(self, k: float = 0.2, B: float = 0.1, B0: float = 0.1) -> None:
         self.k = k
         self.B = B
         self.B0 = B0
+        super().__init__(["k", "B", "B0"])
 
     def __repr__(self) -> str:
         return f"(k, B0, B) = ({self.k:+.6f}, {self.B0:+.6f}, {self.B:+.6f})"

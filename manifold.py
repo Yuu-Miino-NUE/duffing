@@ -443,7 +443,7 @@ def main():
         raise ValueError("Invalid dimension of eigenspace")
 
     # Setup variables
-    x_fix = fix_result.x
+    x_fix = fix_result.xfix
     unstable_vec = fix_result.u_evec[:, 0]
     stable_vec = fix_result.s_evec[:, 0]
 
@@ -454,7 +454,7 @@ def main():
     stable_func = lambda x: poincare_map(x, param, itr_cnt=s_itr_cnt, inverse=True).x
 
     # Setup figure and axes
-    if mode in ["animation", "search"]:
+    if mode in ["animation", "search", "draw"]:
         fig, ax = plt.subplots(figsize=(8, 7))
         ax_config = {
             "xlabel": "x",
@@ -472,7 +472,7 @@ def main():
         curvature_threshold = config.get("curvature_threshold", {"u": 0.1, "s": 0.1})
         m_max = config.get("m_max", {"u": 100, "s": 100})
         init_resolution = config.get("init_resolution", {"u": 100, "s": 100})
-        vec_size = config.get("vec_size", {"u": 1e-2, "s": 1e-2})
+        vec_size = config.get("vec_size", {"u": 1e-4, "s": 1e-4})
 
         if mode == "animation":
             max_frames = config.get("max_frames", 3)
@@ -521,6 +521,9 @@ def main():
                         init_resolution[us],
                         endpoint=False,
                     )
+                    print(
+                        "Calculating manifold for", labels[us], "with", s, "direction"
+                    )
                     _mani[us] = dump_manifold(
                         eigspace[us],
                         funcs[us],
@@ -539,9 +542,7 @@ def main():
                     ) as f:
                         np.savetxt(f, manis[us][i], delimiter=",")
 
-    elif mode == "search":
-        eps = config.get("vec_size", {"u": 1e-4, "s": 1e-4})
-
+    elif mode == "search" or mode == "draw":
         try:
             um_data = [
                 np.loadtxt(
@@ -552,7 +553,8 @@ def main():
             ]
             sm_data = [
                 np.loadtxt(
-                    sys.argv[1].replace(".json", f"_stable_mani{i}.csv"), delimiter=","
+                    sys.argv[1].replace(".json", f"_stable_mani{i}.csv"),
+                    delimiter=",",
                 )
                 for i in range(2)
             ]
@@ -563,10 +565,14 @@ def main():
 
         draw_manifold(ax, um_data, sm_data)
 
-        funcs = {"u": unstable_func, "s": stable_func}
-        vecs = {"u": unstable_vec * eps["u"], "s": stable_vec * eps["s"]}
+        if mode == "search":
+            eps = config.get("vec_size", {"u": 1e-4, "s": 1e-4})
+            itr_cnts = config.get("itr_cnt", {"u": 5, "s": 5})
 
-        setup_finder(fig, ax, x_fix, funcs, vecs)
+            funcs = {"u": unstable_func, "s": stable_func}
+            vecs = {"u": unstable_vec * eps["u"], "s": stable_vec * eps["s"]}
+
+            setup_finder(fig, ax, x_fix, funcs, vecs, itr_cnts)
 
         plt.show()
 
