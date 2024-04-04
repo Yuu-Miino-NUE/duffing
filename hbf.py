@@ -245,21 +245,23 @@ def hbf(
         setattr(param, param_key, sol.x[6])
 
         fix_result = fix(xfix, param, period)
-        xh_u = pmap_u(xu, param)
-        xh_s = pmap_s(xs, param)
-        xh_err = xh_u.x - xh_s.x
+        xfix = fix_result.xfix
+
+        homo_result = homoclinic(xfix, period, param, xu, xs, maps_u, maps_s)
+        xu = homo_result.xu
+        xs = homo_result.xs
+        xh_u = homo_result.xh
+        xh_err = homo_result.xh_err
 
         return HbfResult(
             success=True,
             message="Success",
             xu=xu,
             xs=xs,
-            xh=xh_u.x,
+            xh=xh_u,
             xh_err=xh_err,
             xfix=xfix,
-            tvec_diff=tvec_diff(
-                xh_u.jac, xh_s.jac, fix_result.u_evec[:, 0], fix_result.s_evec[:, 0]
-            ),
+            tvec_diff=homo_result.tvec_diff,
             parameters=param,
             maps_u=maps_u,
             maps_s=maps_s,
