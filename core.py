@@ -21,6 +21,9 @@ class IterItems:
         for item in self.items:
             yield item, getattr(self, item)
 
+    def out_strs(self):
+        return [f"\t{k}: {v}" for k, v in vars(self).items() if k != "items"]
+
     def dump(self, fp: IO, **kwargs) -> None:
         """Dump the object to a JSON file.
 
