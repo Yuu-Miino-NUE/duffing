@@ -7,7 +7,7 @@ SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = _build
-MODULEDIR     = ../
+MODULEDIR     = ../duffing/
 APIDOCSDIR	= $(SOURCEDIR)/_apidocs
 
 # Put it first so that "make" without argument is like "make help".

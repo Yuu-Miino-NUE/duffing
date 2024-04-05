@@ -71,8 +71,8 @@ class IterItems:
 
         See Also
         --------
-        fix.fix: Fixed or periodic point calculation.
-        fix.FixResult: Fixed point result class.
+        fixduffing.fix: Fixed or periodic point calculation.
+        fixduffing.fixResult: Fixed point result class.
         homoclinic.HomoclinicResult: Homoclinic point result class.
         hbf.HbfResult: Homoclinic bifurcation point result class.
         json.dump: Dump JSON object to a file.
