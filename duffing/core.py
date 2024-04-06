@@ -31,8 +31,15 @@ class IterItems:
         ----------
         fp : IO
             File pointer.
+        also : list[str], optional
+            Additional items to dump.
         kwargs : Any
             Keyword arguments for ``json.dump()``.
+
+
+        .. note::
+
+            The ``also`` parameter is used to dump additional items to the JSON file. The items must be attributes of the object.
 
         Examples
         --------
@@ -50,7 +57,7 @@ class IterItems:
             result = fix(xfix0, param, period)
 
             with open("result.json", "w") as f:
-                result.dump(f)
+                result.dump(f, also=["eig", "abs_eig"])
 
         The above code will dump the result object to a JSON file with the following content:
 
@@ -66,7 +73,15 @@ class IterItems:
                     "B": 0.1,
                     "B0": 0.1
                 },
-                "period": 1
+                "period": 1,
+                "eig": [
+                    "(-0.21783034959956155+0.48698936934703324j)",
+                    "(-0.21783034959956155-0.48698936934703324j)"
+                ],
+                "abs_eig": [
+                    0.5334873073126374,
+                    0.5334873073126374
+                ]
             }
 
         See Also
