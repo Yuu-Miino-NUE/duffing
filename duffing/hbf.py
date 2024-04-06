@@ -275,7 +275,8 @@ def hbf(
     .. code-block:: python
 
         import numpy as np
-        from hbf import Parameter, hbf
+        from system import Parameter
+        from hbf import hbf
 
         hbf_args = {
             "xfix0": np.array([-1.003308564506079, 0.29656370772365503]),

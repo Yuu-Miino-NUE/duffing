@@ -1,4 +1,10 @@
-"""Module for calculating the homoclinic point of a fixed point."""
+"""Module for calculating the homoclinic point of a fixed point.
+
+Examples
+--------
+Prepare a JSON file with the following content:
+
+"""
 
 import sys, json
 from collections.abc import Callable
@@ -116,7 +122,7 @@ class HomoclinicResult(IterItems):
         )
 
     def __repr__(self) -> str:
-        return f"HomoclinicResult(\n{'\n'.join(self.out_strs())}\n"
+        return f"HomoclinicResult(\n{'\n'.join(self.out_strs())}\n)"
 
 
 def homoclinic_func(
@@ -172,11 +178,11 @@ def homoclinic_func(
 
 
 def homoclinic(
-    xfix0: numpy.ndarray,
+    xfix: numpy.ndarray,
     period: int,
     param: Parameter,
-    xu0: numpy.ndarray,
-    xs0: numpy.ndarray,
+    xu: numpy.ndarray,
+    xs: numpy.ndarray,
     maps_u: int,
     maps_s: int,
 ):
@@ -184,15 +190,15 @@ def homoclinic(
 
     Parameters
     ----------
-    xfix0 : numpy.ndarray
+    xfix : numpy.ndarray
         Initial value for the fixed or periodic point.
     period : int
         Period of the periodic point.
     param : Parameter
         Parameter object.
-    xu0 : numpy.ndarray
+    xu : numpy.ndarray
         Initial point of the homoclinic point in the unstable manifold.
-    xs0 : numpy.ndarray
+    xs : numpy.ndarray
         Initial point of the homoclinic point in the stable manifold.
     maps_u : int
         Count of forward mapping from xu0 to xh.
@@ -204,10 +210,51 @@ def homoclinic(
     HomoclinicResult
         Homoclinic point calculation result.
 
+    Examples
+    --------
+
+    .. code-block:: python
+
+        import numpy as np
+        from system import Parameter
+        from homoclinic import homoclinic
+
+        homoclinic_args = {
+            "xfix": np.array([[-0.9543211096285452, 0.19089923733361566]]),
+            "period": 1,
+            "param": Parameter(k=0.05, B0=0, B=0.3),
+            "xu": np.array([-0.9543098289802792, 0.19084543736574927]),
+            "xs": np.array([-0.9543053454560082, 0.19092100473541554]),
+            "maps_u": 7,
+            "maps_s": 6,
+        }
+
+        res = homoclinic(**homoclinic_args)
+        print(res)
+
+    The above code will print the homoclinic point calculation result like below:
+
+    .. code-block:: python
+
+        HomoclinicResult(
+            success: True
+            message: Success
+            xu: [-0.95430983  0.19084544]
+            xs: [-0.95430535  0.190921  ]
+            xh: [0.13204361 0.06471631]
+            xh_err: [6.90136837e-12 1.78911053e-12]
+            tvec_diff: 0.9930998099944184
+            xfix: [-0.95432111  0.19089924]
+            period: 1
+            maps_u: 7
+            maps_s: 6
+            parameters: (k, B0, B) = (+0.050000, +0.000000, +0.300000)
+        )
+
     """
 
     # Prepare the fixed point and eigenvectors
-    xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix0, param, period)
+    _xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix, param, period)
 
     # Normal vectors of the eigenvectors
     norm_mat = np.array([[0, 1], [-1, 0]])
@@ -230,13 +277,13 @@ def homoclinic(
         vars=x,
         pmap_u=pmap_u,
         pmap_s=pmap_s,
-        xfix=xfix,
+        xfix=_xfix,
         norm_u=norm_u,
         norm_s=norm_s,
     )
 
     # Main calculation
-    sol = root(func, np.concatenate((xu0, xs0)))
+    sol = root(func, np.concatenate((xu, xs)))
 
     # Return the result
     if sol.success:
@@ -262,7 +309,7 @@ def homoclinic(
             xs=xs,
             xh=xh_u.x,
             xh_err=xh_err,
-            xfix=xfix,
+            xfix=_xfix,
             tvec_diff=calc_tvec_diff(jac_hu, jac_hs, u_evec, s_evec),
             period=period,
             maps_u=maps_u,
