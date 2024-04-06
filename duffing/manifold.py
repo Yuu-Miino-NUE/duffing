@@ -278,13 +278,20 @@ def append_info_for_mani(mani: numpy.ndarray) -> numpy.ndarray:
     return np.hstack((mani, curve.reshape(-1, 1), dist.reshape(-1, 1)))
 
 
-def draw_manifold(ax: Axes, um_data: list[numpy.ndarray], sm_data: list[numpy.ndarray]):
+def draw_manifold(
+    ax: Axes,
+    xfix: np.ndarray,
+    um_data: list[numpy.ndarray],
+    sm_data: list[numpy.ndarray],
+):
     """Draw manifolds.
 
     Parameters
     ----------
     ax : Axes
         Axes object.
+    xfix : numpy.ndarray
+        Fixed point.
     um_data : list[numpy.ndarray]
         Unstable manifold data.
     sm_data : list[numpy.ndarray]
@@ -294,6 +301,7 @@ def draw_manifold(ax: Axes, um_data: list[numpy.ndarray], sm_data: list[numpy.nd
         ax.plot(um_data[i][:, 0], um_data[i][:, 1], "r-")
         ax.plot(sm_data[i][:, 0], sm_data[i][:, 1], "b-")
     ax.legend(["Unstable manifold", "Stable manifold"])
+    ax.plot(xfix[0], xfix[1], "ko")
 
 
 def setup_finder(
@@ -616,7 +624,7 @@ def _main():
                 "Manifold data not found. Run with 'dump' mode first."
             )
 
-        draw_manifold(ax, um_data, sm_data)
+        draw_manifold(ax, xfix, um_data, sm_data)
 
         if mode == "search":
             eps = config.get("vec_size", {"u": 1e-4, "s": 1e-4})

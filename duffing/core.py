@@ -32,7 +32,7 @@ class IterItems:
         fp : IO
             File pointer.
         kwargs : Any
-            Keyword arguments for json.dump().
+            Keyword arguments for ``json.dump()``.
 
         Examples
         --------
@@ -71,8 +71,8 @@ class IterItems:
 
         See Also
         --------
-        fixduffing.fix: Fixed or periodic point calculation.
-        fixduffing.fixResult: Fixed point result class.
+        fix.fix: Fixed or periodic point calculation.
+        fix.FixResult: Fixed point result class.
         homoclinic.HomoclinicResult: Homoclinic point result class.
         hbf.HbfResult: Homoclinic bifurcation point result class.
         json.dump: Dump JSON object to a file.

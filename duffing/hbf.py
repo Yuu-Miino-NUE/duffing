@@ -1,4 +1,71 @@
-"""Module to calculate homoclinic bifurcation point."""
+"""Module to calculate homoclinic bifurcation point.
+
+Examples
+--------
+Prepare a JSON file with the following content:
+
+.. code-block:: json
+
+    {
+        "xfix": [-1.003308564506079, 0.29656370772365503],
+        "xu": [-1.0033042799251857, 0.29643129025277903],
+        "xs": [-1.0031997049668901, 0.2967252732614351],
+        "parameters": {
+            "k": 0.05,
+            "B0": 0,
+            "B": 0.225
+        },
+        "period": 1,
+        "maps_u": 7,
+        "maps_s": 6,
+        "hbf_param_key": "B"
+    }
+
+Run the following command in your terminal with the JSON file:
+
+.. code-block:: bash
+
+    python hbf.py [data.json]
+
+The result will be printed and dumped to a JSON file with the same name as the input file but with "_hbf" suffix.
+The content of the dumped file will be like below:
+
+.. code-block:: json
+
+    {
+        "xfix": [
+            -1.0045625374115001,
+            0.3021901997786167
+        ],
+        "xu": [
+            -1.0045590724479194,
+            0.30205195722416683
+        ],
+        "xs": [
+            -1.0044433101609014,
+            0.30236677831803677
+        ],
+        "parameters": {
+            "k": 0.05,
+            "B": 0.22194620514454416,
+            "B0": 0
+        },
+        "period": 1,
+        "maps_u": 7,
+        "maps_s": 6,
+        "hbf_param_key": "B"
+    }
+
+Using :py:mod:`manifold` module, you can draw the stable and unstable manifolds of the homoclinic tangency.
+
+.. image:: ../_images/ex_hbf_manifold.png
+
+See Also
+--------
+homoclinic : Homoclinic point calculation.
+manifold: Manifold module, which contains functions to draw the stable and unstable manifolds.
+
+"""
 
 import sys, json
 from collections.abc import Callable
@@ -89,7 +156,7 @@ class HbfResult(IterItems):
         )
 
     def __repr__(self) -> str:
-        return f"HbfResult({self.success}, {self.message}, {self.xu}, {self.xs}, {self.xh}, {self.xh_err}, {self.xfix}, {self.tvec_diff}, {self.parameters})"
+        return f"HbfResult(\n{'\n'.join(self.out_strs())}\n)"
 
 
 def hbf_func(
@@ -202,28 +269,57 @@ def hbf(
     HbfResult
         Homoclinic point calculation result.
 
-    Raises
-    ------
-    ValueError
-        If the fixed point calculation fails.
-    ValueError
-        If the homoclinic point calculation fails.
+    Examples
+    --------
+
+    .. code-block:: python
+
+        import numpy as np
+        from hbf import Parameter, hbf
+
+        hbf_args = {
+            "xfix0": np.array([-1.003308564506079, 0.29656370772365503]),
+            "period": 1,
+            "param": Parameter(k=0.05, B0=0, B=0.225),
+            "hbf_param_key": "B",
+            "xu0": np.array([-1.0033042799251857, 0.29643129025277903]),
+            "xs0": np.array([-1.0031997049668901, 0.2967252732614351]),
+            "maps_u": 7,
+            "maps_s": 6,
+            "verbose": True,
+        }
+
+        res = hbf(**hbf_args)
+        print(res)
+
+    The above code will print the homoclinic bifurcation point information like below:
+
+    .. code-block:: python
+
+        HbfResult(
+            success: True
+            message: Success
+            xfix: [-1.00456254  0.3021902 ]
+            period: 1
+            xu: [-1.00455907  0.30205196]
+            xs: [-1.00444331  0.30236678]
+            xh: [-0.16507173 -0.23115691]
+            xh_err: [-1.92765989e-09  9.95684063e-10]
+            tvec_diff: -2.422641183612425e-05
+            parameters: (k, B0, B) = (+0.050000, +0.000000, +0.221946)
+            maps_u: 7
+            maps_s: 6
+            hbf_param_key: B
+        )
+
+    See Also
+    --------
+    homoclinic : Homoclinic point calculation.
+    manifold: Manifold module, which contains functions to draw the stable and unstable manifolds.
     """
-    fix_result = fix(xfix0, param, period)
-    homo_result = homoclinic(xfix0, period, param, xu0, xs0, maps_u, maps_s)
 
-    if not fix_result.success:
-        raise ValueError(fix_result.message)
-    if not homo_result.success:
-        raise ValueError(homo_result.message)
-
-    if (u_eig := fix_result.u_eig) is None:
-        raise ValueError("Failed to find unstable eigenvalue")
-    if (s_eig := fix_result.s_eig) is None:
-        raise ValueError("Failed to find stable eigenvalue")
-
-    u_itr_cnt = 2 if np.sign(u_eig[0]) == -1 else 1
-    s_itr_cnt = 2 if np.sign(s_eig[0]) == -1 else 1
+    # Define the maps
+    _, _, _, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix0, param, period)
 
     pmap = lambda x, p: poincare_map(x, p, calc_jac=True)
     pmap_u = lambda x, p: poincare_map(x, p, itr_cnt=u_itr_cnt * maps_u, calc_jac=True)
@@ -231,18 +327,22 @@ def hbf(
         x, p, itr_cnt=s_itr_cnt * maps_s, calc_jac=True, inverse=True
     )
 
+    # Define the function for root finding
     func = lambda x: hbf_func(
         x, period, pmap, pmap_u, pmap_s, param, hbf_param_key, verbose
     )
 
+    # Initial guess
     vars = np.empty(7)
     vars[0:6] = np.concatenate((xfix0, xu0, xs0))
     vars[6] = getattr(param, hbf_param_key)
 
+    # Main calculation
     sol = root(func, vars)
     if verbose:
         print()
 
+    # Post-process
     if sol.success:
         xfix = sol.x[0:2]
         xu = sol.x[2:4]
@@ -287,6 +387,7 @@ def hbf(
 
 
 def __main():
+    # Load data from JSON file
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)
@@ -303,9 +404,13 @@ def __main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
+    # Calculate homoclinic bifurcation point
     res = hbf(x0, period, param, hbf_param_key, xu0, xs0, maps_u, maps_s, verbose=True)
     print(res)
-    res.dump(sys.stdout)
+
+    # Dump the result to a JSON file
+    with open(sys.argv[1].replace(".json", "_hbf.json"), "w") as f:
+        res.dump(f)
 
 
 if __name__ == "__main__":
