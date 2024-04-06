@@ -185,7 +185,7 @@ def homoclinic(
     Parameters
     ----------
     xfix0 : numpy.ndarray
-
+        Initial value for the fixed or periodic point.
     period : int
         Period of the periodic point.
     param : Parameter
