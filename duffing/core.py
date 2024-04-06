@@ -24,7 +24,7 @@ class IterItems:
     def out_strs(self):
         return [f"\t{k}: {v}" for k, v in vars(self).items() if k != "items"]
 
-    def dump(self, fp: IO, **kwargs) -> None:
+    def dump(self, fp: IO, also: list[str] = [], **kwargs) -> None:
         """Dump the object to a JSON file.
 
         Parameters
@@ -80,7 +80,12 @@ class IterItems:
 
         kwargs.setdefault("indent", 4)
         kwargs.setdefault("cls", _IterItemsJsonEncoder)
+        if len(also) > 0:
+            _items = self.items
+            self.items = self.items + also
         json.dump(self, fp, **kwargs)
+        if len(also) > 0:
+            self.items = _items
 
 
 class _IterItemsJsonEncoder(json.JSONEncoder):
@@ -91,4 +96,6 @@ class _IterItemsJsonEncoder(json.JSONEncoder):
             return dict(obj)
         if isinstance(obj, numpy.ndarray):
             return obj.tolist()
+        if isinstance(obj, complex):
+            return str(obj)
         return super().default(obj)

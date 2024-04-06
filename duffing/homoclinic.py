@@ -51,20 +51,28 @@ class HomoclinicResult(IterItems):
     ----------
     success : bool
         Success flag.
-    xu : numpy.ndarray
-        Homoclinic point in unstable eigenspace.
-    xs : numpy.ndarray
-        Homoclinic point in stable eigenspace.
-    xh : numpy.ndarray
-        Homoclinic point forward from xu and backward from xs.
-    xh_err : float
-        Error of the homoclinic point, calculated as xh_u - xh_s.
-    xfix: numpy.ndarray
-        Fixed point.
-    tvec_diff: float
-        Difference of the tangent vectors at the homoclinic point.
     message : str
         Message of the calculation result.
+    xu : numpy.ndarray
+        Calculated homoclinic point in unstable eigenspace.
+    xs : numpy.ndarray
+        Calculated homoclinic point in stable eigenspace.
+    xh : numpy.ndarray
+        Calculated homoclinic point forward from xu and backward from xs.
+    xh_err : float
+        Error of the homoclinic point, calculated as xh_u - xh_s.
+    tvec_diff: float
+        Difference of the tangent vectors at the homoclinic point.
+    xfix: numpy.ndarray
+        Given fixed or periodic point.
+    period : int
+        Period of the periodic point, which is 1 for a fixed point.
+    maps_u : int
+        Given count of forward mapping from xu to xh.
+    maps_s : int
+        Given count of backward mapping from xs to xh.
+    parameters : Parameter
+        Given parameter object.
     """
 
     def __init__(
@@ -75,12 +83,12 @@ class HomoclinicResult(IterItems):
         xs: numpy.ndarray | None = None,
         xh: numpy.ndarray | None = None,
         xh_err: numpy.ndarray | None = None,
+        tvec_diff: float | None = None,
         xfix: numpy.ndarray | None = None,
         period: int | None = None,
         maps_u: int | None = None,
         maps_s: int | None = None,
         parameters: Parameter | None = None,
-        tvec_diff: float | None = None,
     ) -> None:
         self.success = success
         self.message = message
@@ -88,8 +96,8 @@ class HomoclinicResult(IterItems):
         self.xs = xs
         self.xh = xh
         self.xh_err = xh_err
-        self.xfix = xfix
         self.tvec_diff = tvec_diff
+        self.xfix = xfix
         self.period = period
         self.maps_u = maps_u
         self.maps_s = maps_s
@@ -108,7 +116,7 @@ class HomoclinicResult(IterItems):
         )
 
     def __repr__(self) -> str:
-        return f"HomoclinicResult({self.success=}, {self.message=}, {self.xu=}, {self.xs=}, {self.xh=}, {self.xh_err=}, {self.xfix=}, {self.tvec_diff=})"
+        return f"HomoclinicResult(\n{'\n'.join(self.out_strs())}\n"
 
 
 def homoclinic_func(
@@ -136,6 +144,8 @@ def homoclinic_func(
         Normal vector of unstable eigenvector.
     norm_s : numpy.ndarray
         Normal vector of stable eigenvector.
+    allowed_dist : float, optional
+        Allowed distance from the fixed point, by default 1e-2.
 
     Returns
     -------
@@ -194,10 +204,6 @@ def homoclinic(
     HomoclinicResult
         Homoclinic point calculation result.
 
-    Raises
-    ------
-    ValueError
-        Invalid dimension of eigenspace. This error is raised when the dimension of the eigenspace is not 1.
     """
 
     # Prepare the fixed point and eigenvectors
