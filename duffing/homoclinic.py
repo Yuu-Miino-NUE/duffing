@@ -210,8 +210,8 @@ def homoclinic(
     HomoclinicResult
         Homoclinic point calculation result.
 
-    Examples
-    --------
+    Example
+    -------
 
     .. code-block:: python
 
