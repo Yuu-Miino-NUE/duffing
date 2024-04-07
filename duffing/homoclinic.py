@@ -65,7 +65,7 @@ import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
-from manifold import prepare_by_fix
+from manifold import _prepare_by_fix
 from system import poincare_map, Parameter
 
 
@@ -306,7 +306,7 @@ def homoclinic(
     """
 
     # Prepare the fixed point and eigenvectors
-    _xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix, param, period)
+    _xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = _prepare_by_fix(xfix, param, period)
 
     # Normal vectors of the eigenvectors
     norm_mat = np.array([[0, 1], [-1, 0]])

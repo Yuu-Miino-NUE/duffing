@@ -74,7 +74,7 @@ import numpy as np
 from scipy.optimize import root
 
 from core import IterItems
-from manifold import prepare_by_fix
+from manifold import _prepare_by_fix
 from system import Parameter, PoincareMapResult, poincare_map
 from fix import fix, fix_func
 from homoclinic import homoclinic, homoclinic_func, calc_tvec_diff
@@ -205,7 +205,7 @@ def hbf_func(
     x_s0 = vars[4:6]
     setattr(param, hbf_param_key, vars[6])
 
-    xfix, u_evec, s_evec = prepare_by_fix(xfix0, param, period)[0:3]
+    xfix, u_evec, s_evec = _prepare_by_fix(xfix0, param, period)[0:3]
 
     norm_mat = np.array([[0, 1], [-1, 0]])
     nvec_u = norm_mat @ u_evec
@@ -320,7 +320,7 @@ def hbf(
     """
 
     # Define the maps
-    _, _, _, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix0, param, period)
+    _, _, _, u_itr_cnt, s_itr_cnt = _prepare_by_fix(xfix0, param, period)
 
     pmap = lambda x, p: poincare_map(x, p, calc_jac=True)
     pmap_u = lambda x, p: poincare_map(x, p, itr_cnt=u_itr_cnt * maps_u, calc_jac=True)

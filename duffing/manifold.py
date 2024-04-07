@@ -1,4 +1,165 @@
-"""Module to calculate and draw manifolds of a fixed point."""
+"""Module to calculate and draw manifolds of a fixed point.
+
+Examples
+--------
+This module works with 4 modes: `animation`, `dump`, `search`, and `draw`.
+
+1. Animation mode:
+    This mode calculates and draws manifolds of a fixed point with animation.
+    Run with the following command:
+
+    .. code-block:: bash
+
+        python manifold.py [data.json]
+
+
+    where `data.json` is a JSON file that contains the following
+
+    .. code-block:: json
+
+        {
+            "xfix": [
+                -0.95432111,
+                0.19089924
+            ],
+            "parameters": {
+                "k": 0.05,
+                "B0": 0,
+                "B": 0.3
+            },
+            "period": 1,
+            "manifold_mode": "animation"
+        }
+
+    The ``matplotlib`` window will be opened and the animation will be shown.
+
+2. Dump mode:
+    This mode calculates and dumps manifold data to CSV files.
+    Run with the following command:
+
+    .. code-block:: bash
+
+        python manifold.py [data.json]
+
+    where `data.json` is a JSON file that contains the following
+
+    .. code-block:: json
+
+        {
+            "xfix": [
+                -0.95432111,
+                0.19089924
+            ],
+            "parameters": {
+                "k": 0.05,
+                "B0": 0,
+                "B": 0.3
+            },
+            "period": 1,
+            "manifold_mode": "dump"
+        }
+
+    The manifold data will be dumped to CSV files with the same name but with the suffix `_unstable_mani{i}.csv` and `_stable_mani{i}.csv`.
+
+3. Search mode:
+    This mode searches for a homoclinic point.
+    Before running this mode, you need to run the dump mode first.
+    Run with the following command:
+
+    .. code-block:: bash
+
+        python manifold.py [data.json]
+
+    where `data.json` is a JSON file that contains the following
+
+    .. code-block:: json
+
+        {
+            "xfix": [
+                -0.95432111,
+                0.19089924
+            ],
+            "parameters": {
+                "k": 0.05,
+                "B0": 0,
+                "B": 0.3
+            },
+            "period": 1,
+            "manifold_mode": "search"
+        }
+
+    The ``matplotlib`` window will be opened and you can search for the closest homoclinic point.
+    Using the arrow keys, you can move the initial points of the unstable and stable manifolds.
+    See the key bindings section of :func:`manifold.manifold_animation` for more details.
+
+4. Draw mode:
+    This mode draws manifolds with the dumped data.
+    Before running this mode, you need to run the dump mode first.
+    Run with the following command:
+
+    .. code-block:: bash
+
+        python manifold.py [data.json]
+
+    where `data.json` is a JSON file that contains the following
+
+    .. code-block:: json
+
+        {
+            "xfix": [
+                -0.95432111,
+                0.19089924
+            ],
+            "parameters": {
+                "k": 0.05,
+                "B0": 0,
+                "B": 0.3
+            },
+            "period": 1,
+            "manifold_mode": "draw"
+        }
+
+    The ``matplotlib`` window will be opened and the manifolds will be drawn.
+
+
+.. note::
+    Parameters for subfunctions can be set in the JSON file like the following:
+
+    .. code-block:: json
+
+        {
+            "manifold_config": {
+                "allowed_distance": {
+                    "u": 1e-2,
+                    "s": 1e-2
+                },
+                "curvature_threshold": {
+                    "u": 0.1,
+                    "s": 0.1
+                },
+                "m_max": {
+                    "u": 100,
+                    "s": 100
+                },
+                "init_resolution": {
+                    "u": 100,
+                    "s": 100
+                },
+                "vec_size": {
+                    "u": 1e-4,
+                    "s": 1e-4
+                },
+                "max_frames": 3,
+                "itr_cnt": {
+                    "u": 5,
+                    "s": 5
+                }
+            }
+        }
+
+    where "u" and "s" are for the unstable and stable manifolds, respectively.
+
+"""
 
 import sys, json
 
@@ -80,7 +241,7 @@ def calculate_next_manifold(
     m_max: int = 100,
     final: bool = False,
 ) -> numpy.ndarray:
-    """Calculate next manifold.
+    """Calculate next manifold from a given domain.
 
     Parameters
     ----------
@@ -181,6 +342,28 @@ def manifold_animation(
         Threshold of the curvature to determine the end of the calculation, by default 0.1 for both manifolds.
     m_max : dict[str, int], optional
         Maximum number of domain divider, by default 100 for both manifolds.
+
+
+    Key Bindings
+    ------------
+    ============ ======
+    Key          Action
+    ============ ======
+    :kbd:`left`  Move the unstable manifold to the left.
+    :kbd:`right` Move the unstable manifold to the right.
+    :kbd:`a`     Move the unstable manifold to the left in small steps.
+    :kbd:`d`     Move the unstable manifold to the right in small steps.
+    :kbd:`up`    Move the stable manifold up.
+    :kbd:`down`  Move the stable manifold down.
+    :kbd:`w`     Move the stable manifold up in small steps.
+    :kbd:`s`     Move the stable manifold down in small steps.
+    :kbd:`0`     Reset the moving small step factor to 1/10.
+    :kbd:`-`     Decrease the moving small step factor by 1/10.
+    :kbd:`=`     Increase the moving small step factor by 10.
+    :kbd:`p`     Print the current points of the fixed point, the unstable manifold, and the stable manifold.
+    :kbd:`q`     Close the window.
+    ============ ======
+
     """
     ax.plot(xfix[0], xfix[1], "ko")
     colors = {"u": "r", "s": "b"}
@@ -220,11 +403,9 @@ def dump_manifold(
     domain: numpy.ndarray,
     func: Callable[[numpy.ndarray], numpy.ndarray],
     itr_cnt: int = 3,
-    allowed_distance: float = 1e-2,
-    curvature_threshold: float = 0.1,
-    m_max: int = 100,
+    **kwargs,
 ):
-    """Dump manifold data.
+    """Dump manifold data calculated with a given func, itr_cnt, and domain.
 
     Parameters
     ----------
@@ -234,12 +415,8 @@ def dump_manifold(
         Function to calculate the next point of the manifold.
     itr_cnt : int, optional
         Iteration count of the calculation, by default 3.
-    allowed_distance : float, optional
-        Allowed distance between points, by default 1e-2.
-    curvature_threshold : float, optional
-        Threshold of the curvature to determine the end of the calculation, by default 0.1.
-    m_max : int, optional
-        Maximum number of domain divider, by default 100.
+    kwargs : dict
+        Keyword arguments for calculate_next_manifold.
 
     Returns
     -------
@@ -249,13 +426,7 @@ def dump_manifold(
     _domain = domain.copy()
     ret = _domain.copy()
     for _ in range(itr_cnt):
-        _domain = calculate_next_manifold(
-            _domain,
-            func,
-            allowed_distance=allowed_distance,
-            curvature_threshold=curvature_threshold,
-            m_max=m_max,
-        )
+        _domain = calculate_next_manifold(_domain, func, **kwargs)
         ret = np.vstack((ret, _domain))
     return ret
 
@@ -464,7 +635,7 @@ def setup_finder(
     fig.canvas.mpl_connect("button_press_event", on_click)
 
 
-def prepare_by_fix(xfix0: numpy.ndarray, param: Parameter, period):
+def _prepare_by_fix(xfix0: numpy.ndarray, param: Parameter, period):
     # Calculate fixed point and
     fix_result = fix(xfix0, param, period=period)
     if not fix_result.success:
@@ -505,7 +676,7 @@ def _main():
     except FileNotFoundError:
         raise FileNotFoundError(f"{sys.argv[1]} not found")
 
-    xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = prepare_by_fix(xfix0, param, period)
+    xfix, u_evec, s_evec, u_itr_cnt, s_itr_cnt = _prepare_by_fix(xfix0, param, period)
 
     u_func = lambda x: poincare_map(
         x, param, itr_cnt=u_itr_cnt * period, calc_jac=True
