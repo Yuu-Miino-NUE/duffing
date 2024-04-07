@@ -4,6 +4,58 @@ Examples
 --------
 Prepare a JSON file with the following content:
 
+.. code-block:: json
+
+    {
+        "xfix": [-0.95432, 0.19090],
+        "period": 1,
+        "parameters": {
+            "k": 0.05,
+            "B0": 0,
+            "B": 0.3
+        },
+        "xu": [-0.95430982, 0.19084544],
+        "xs": [-0.95430534, 0.19092100],
+        "maps_u": 7,
+        "maps_s": 6
+    }
+
+Run the following code in your terminal with the JSON file:
+
+.. code-block:: bash
+
+    python homoclinic.py [data.json]
+
+The result will be printed and dumped as a JSON file with the same name as the input file but with "_homoclinic" suffix.
+The content of the dumped file will be like below:
+
+.. code-block:: json
+
+    {
+        "xfix": [
+            -0.9543211072836386,
+            0.19089923612533358
+        ],
+        "xu": [
+            -0.9543098289790618,
+            0.1908454373599407
+        ],
+        "xs": [
+            -0.954305345456587,
+            0.19092100473461604
+        ],
+        "parameters": {
+            "k": 0.05,
+            "B": 0.3,
+            "B0": 0
+        },
+        "period": 1,
+        "maps_u": 7,
+        "maps_s": 6
+    }
+
+
+
 """
 
 import sys, json
@@ -220,11 +272,11 @@ def homoclinic(
         from homoclinic import homoclinic
 
         homoclinic_args = {
-            "xfix": np.array([[-0.9543211096285452, 0.19089923733361566]]),
+            "xfix": np.array([[-0.95432, 0.19090]]),
             "period": 1,
             "param": Parameter(k=0.05, B0=0, B=0.3),
-            "xu": np.array([-0.9543098289802792, 0.19084543736574927]),
-            "xs": np.array([-0.9543053454560082, 0.19092100473541554]),
+            "xu": np.array([-0.95430982, 0.19084544]),
+            "xs": np.array([-0.95430534, 0.19092100]),
             "maps_u": 7,
             "maps_s": 6,
         }
@@ -241,9 +293,9 @@ def homoclinic(
             message: Success
             xu: [-0.95430983  0.19084544]
             xs: [-0.95430535  0.190921  ]
-            xh: [0.13204361 0.06471631]
-            xh_err: [6.90136837e-12 1.78911053e-12]
-            tvec_diff: 0.9930998099944184
+            xh: [0.13204358 0.06471627]
+            xh_err: [ 1.51237094e-08 -6.84885871e-08]
+            tvec_diff: 0.9930997598141681
             xfix: [-0.95432111  0.19089924]
             period: 1
             maps_u: 7
@@ -343,7 +395,8 @@ def _main():
 
     # Print the result
     print(dict(res))
-    res.dump(sys.stdout)
+    with open(sys.argv[1].replace(".json", "_homoclinic.json"), "w") as f:
+        res.dump(f)
 
 
 if __name__ == "__main__":
