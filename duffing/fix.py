@@ -62,7 +62,7 @@ class FixResult(IterItems):
     message : str
         Message of the calculation result.
     xfix : numpy.ndarray | None
-        Fixed or periodic point.
+        Calculated fixed or periodic point.
     eig : numpy.ndarray | None
         Eigenvalues of the Jacobian matrix of the Poincare map at the fixed or periodic point.
     abs_eig : numpy.ndarray | None

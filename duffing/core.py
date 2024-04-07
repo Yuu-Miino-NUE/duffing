@@ -24,15 +24,22 @@ class IterItems:
     def out_strs(self):
         return [f"\t{k}: {v}" for k, v in vars(self).items() if k != "items"]
 
-    def dump(self, fp: IO, **kwargs) -> None:
+    def dump(self, fp: IO, also: list[str] = [], **kwargs) -> None:
         """Dump the object to a JSON file.
 
         Parameters
         ----------
         fp : IO
             File pointer.
+        also : list[str], optional
+            Additional items to dump.
         kwargs : Any
-            Keyword arguments for json.dump().
+            Keyword arguments for ``json.dump()``.
+
+
+        .. note::
+
+            The ``also`` parameter is used to dump additional items to the JSON file. The items must be attributes of the object.
 
         Examples
         --------
@@ -50,7 +57,7 @@ class IterItems:
             result = fix(xfix0, param, period)
 
             with open("result.json", "w") as f:
-                result.dump(f)
+                result.dump(f, also=["eig", "abs_eig"])
 
         The above code will dump the result object to a JSON file with the following content:
 
@@ -66,13 +73,21 @@ class IterItems:
                     "B": 0.1,
                     "B0": 0.1
                 },
-                "period": 1
+                "period": 1,
+                "eig": [
+                    "(-0.21783034959956155+0.48698936934703324j)",
+                    "(-0.21783034959956155-0.48698936934703324j)"
+                ],
+                "abs_eig": [
+                    0.5334873073126374,
+                    0.5334873073126374
+                ]
             }
 
         See Also
         --------
-        fixduffing.fix: Fixed or periodic point calculation.
-        fixduffing.fixResult: Fixed point result class.
+        fix.fix: Fixed or periodic point calculation.
+        fix.FixResult: Fixed point result class.
         homoclinic.HomoclinicResult: Homoclinic point result class.
         hbf.HbfResult: Homoclinic bifurcation point result class.
         json.dump: Dump JSON object to a file.
@@ -80,7 +95,12 @@ class IterItems:
 
         kwargs.setdefault("indent", 4)
         kwargs.setdefault("cls", _IterItemsJsonEncoder)
+        if len(also) > 0:
+            _items = self.items
+            self.items = self.items + also
         json.dump(self, fp, **kwargs)
+        if len(also) > 0:
+            self.items = _items
 
 
 class _IterItemsJsonEncoder(json.JSONEncoder):
@@ -91,4 +111,6 @@ class _IterItemsJsonEncoder(json.JSONEncoder):
             return dict(obj)
         if isinstance(obj, numpy.ndarray):
             return obj.tolist()
+        if isinstance(obj, complex):
+            return str(obj)
         return super().default(obj)

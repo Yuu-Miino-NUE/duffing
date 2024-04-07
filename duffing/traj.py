@@ -1,4 +1,91 @@
-"""Module for trajectory animation and data dump of system."""
+"""Module for trajectory animation and data dump of system.
+
+This module provides functions to animate the trajectory of the system and dump the trajectory data.
+The module works with 2 modes: `animation` and `dump`.
+
+1. Animation mode:
+    Animate the trajectory of the system.
+
+2. Dump mode:
+    Dump the trajectory data to CSV files.
+
+Example
+-------
+To animate the trajectory of the system, run the following command:
+
+.. code-block:: bash
+
+        python traj.py data.json
+
+where `data.json` is a JSON file containing the initial state vector, parameter values, and "traj_mode" key set to "animation".
+
+.. code-block:: json
+
+    {
+        "x0": [0, 0],
+        "parameters": {
+            "k": 0.5,
+            "B": 0.3,
+            "B0": 0.08
+        },
+        "traj_mode": "animation",
+        "traj_animation": {
+            "ax_config":{
+                "xlim": [-1.5, 1.5],
+                "ylim": [-1.5, 1.5]
+            },
+            "traj_plot_config": {
+                "color": "teal"
+            },
+            "point_plot_config": {
+                "color": "orange"
+            }
+        }
+    }
+
+After running the command, the animation window will open. The initial point is set to (0, 0) and the parameter values are set to `k=0.5`, `B0=0.2`, and `B=0.2`.
+The following figure shows the animation window:
+
+.. image:: ../_images/ex_traj_animation.png
+
+The animation mode supports the key bindings listed in the documentation for the :func:`traj.traj_animation` function.
+
+.. note::
+    "animation" mode accepts the following keys in the ``traj_animation`` dictionary:
+
+    ``ax_config``:
+        Configuration of the Axes object.
+    ``traj_plot_config``:
+        Configuration of the trajectory plot, passed to ``ax.plot()``.
+    ``point_plot_config``:
+        Configuration of the point plot, passed to ``ax.plot()``.
+    ``init_point_plot_config``:
+        Configuration of the initial point plot, passed to ``ax.plot()``.
+    ``inc_param_keys``:
+        Key(s) of the parameter to increment, ``["B", "B0"]`` by default.
+    ``inc_param_step``:
+        Increment step of the parameter, 0.01 by default.
+    ``traj_resolution``:
+        Resolution of the trajectory in the period, 100 by default.
+
+To dump the trajectory data to CSV files, run with "dump" mode:
+
+.. code-block:: json
+
+    {
+        "x0": [0, 0],
+        "parameters": {
+            "k": 0.5,
+            "B": 0.3,
+            "B0": 0.08
+        },
+        "traj_mode": "dump"
+    }
+
+
+After running the command, the trajectory data will be saved to `data_traj.csv` and `data_poin.csv`.
+
+"""
 
 from typing import Any
 import sys, json
@@ -51,6 +138,33 @@ def traj_animation(
         Configuration of the point plot to pass to ax.plot(), by default {"marker": "o", "color": "r", "markersize": 4}.
     init_point_plot_config : dict[str, Any], optional
         Configuration of the initial point plot to pass to ax.plot(), by default {"color": "g"}.
+
+
+    Key Bindings
+    ------------
+    ============ ==================================================
+    Key          Action
+    ============ ==================================================
+    :kbd:`p`     Print current state and parameter values.
+    :kbd:`e`     Erase trajectory lines.
+    :kbd:`f`     Toggle trajectory plot.
+    :kbd:`w`     Increment the first parameter.
+    :kbd:`s`     Decrement the first parameter.
+    :kbd:`a`     Decrement the second parameter.
+    :kbd:`d`     Increment the second parameter.
+    :kbd:`=`     Increase increment step.
+    :kbd:`-`     Decrease increment step.
+    :kbd:`0`     Reset increment step.
+    :kbd:`Space` Pause/Resume animation.
+    :kbd:`q`     Quit.
+    ============ ==================================================
+
+    .. note::
+        - Click on the plot to set the initial point.
+        - The trajectory is updated by solving the ODE system.
+        - The parameter values can be updated by pressing :kbd:`w`, :kbd:`s`, :kbd:`a`, and :kbd:`d`.
+        - The increment step can be updated by pressing :kbd:`=`, :kbd:`-`, and :kbd:`0`.
+
     """
 
     # Initialization
@@ -192,7 +306,7 @@ def dump_trajectory(
     Returns
     -------
     dict[str, numpy.ndarray]
-        Trajectory data.
+        Trajectory data. Keys are "traj" and "points".
     """
     t_span = (0, base_period)
     t_eval = np.linspace(*t_span, traj_resolution)
@@ -216,6 +330,7 @@ def dump_trajectory(
 
 
 def _main():
+    # Load data from JSON file
     try:
         with open(sys.argv[1], "r") as f:
             data = json.load(f)

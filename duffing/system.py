@@ -34,7 +34,7 @@ class Parameter(IterItems):
 
 
 def ode_func(t: float, vec_x: numpy.ndarray, param: Parameter) -> numpy.ndarray:
-    """Duffing oscillator ODE function.
+    """Duffing oscillator ODE function to be solved by ODE solver.
 
     Parameters
     ----------
@@ -49,6 +49,11 @@ def ode_func(t: float, vec_x: numpy.ndarray, param: Parameter) -> numpy.ndarray:
     -------
     numpy.ndarray
         Derivative of the state vector.
+
+    See Also
+    --------
+    scipy.integrate.solve_ivp
+        ODE solver.
     """
     x, y = vec_x
     k, B, B0 = param.k, param.B, param.B0
