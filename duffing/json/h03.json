@@ -1,0 +1,30 @@
+{
+    "xfix": [
+        0.6313544770895047,
+        0.1894063431268514
+    ],
+    "parameters": {
+        "a": 1.2,
+        "b": 0.3
+    },
+    "period": 1,
+    "manifold_mode": "dump",
+    "manifold_config": {
+        "max_frames": 5,
+        "vec_size": {
+            "u": 5e-3,
+            "s": 5e-3
+        },
+        "curvature_threshold": {
+            "u": 1e-2,
+            "s": 1e-3
+        },
+        "itr_cnt": {
+            "u": 6,
+            "s": 6
+        },
+        "plot_box": [
+            [-3, -2], [3, 2]
+        ]
+    }
+}

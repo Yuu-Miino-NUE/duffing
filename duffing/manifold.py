@@ -737,6 +737,7 @@ def _main():
             )
         else:  # mode == "dump"
             itr_cnt = config.get("itr_cnt", {"u": 5, "s": 5})
+            plot_box = config.get("plot_box", [(-2, -2), (2, 2)])
             manis = {"u": [], "s": []}
             vecs = {"u": u_evec, "s": s_evec}
             funcs = {"u": u_func, "s": s_func}
@@ -764,6 +765,19 @@ def _main():
                         curvature_threshold=curvature_threshold[us],
                         m_max=m_max[us],
                     )
+                    _mani[us] = remove_similar(_mani[us])
+
+                    # Remove out of bounds points
+                    _mani[us] = _mani[us][
+                        np.all(
+                            np.logical_and(
+                                plot_box[0] <= _mani[us],
+                                _mani[us] <= plot_box[1],
+                            ),
+                            axis=1,
+                        )
+                    ]
+
                     _mani[us] = append_info_for_mani(_mani[us])
                     manis[us].append(_mani[us])
 
@@ -772,7 +786,7 @@ def _main():
                     with open(
                         sys.argv[1].replace(".json", f"_{labels[us]}_mani{i}.csv"), "w"
                     ) as f:
-                        np.savetxt(f, manis[us][i], delimiter=",")
+                        np.savetxt(f, manis[us][i], delimiter=",", fmt="%.5f")
 
     elif mode == "search" or mode == "draw":
         try:
